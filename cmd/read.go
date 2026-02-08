@@ -1,29 +1,22 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
+
+	"enver/sources"
 
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-type Source struct {
-	Name      string `yaml:"name"`
-	Namespace string `yaml:"namespace"`
-	Type      string `yaml:"type"`
-}
-
 type Config struct {
-	KubeContexts []string `yaml:"kube-contexts"`
-	Sources      []Source `yaml:"sources"`
+	KubeContexts []string          `yaml:"kube-contexts"`
+	Sources      []sources.Source  `yaml:"sources"`
 }
 
 var kubeContext string
@@ -87,15 +80,14 @@ var readCmd = &cobra.Command{
 			return fmt.Errorf("failed to create kubernetes client: %w", err)
 		}
 
-		// Collect all env vars with their source info
-		type envEntry struct {
-			key       string
-			value     string
-			sourceType string
-			name      string
-			namespace string
+		// Map of source types to their fetchers
+		fetchers := map[string]sources.Fetcher{
+			"ConfigMap": &sources.ConfigMapFetcher{},
+			"Secret":    &sources.SecretFetcher{},
 		}
-		var envData []envEntry
+
+		// Collect all env vars with their source info
+		var envData []sources.EnvEntry
 
 		// Get each source and collect its data
 		for _, source := range config.Sources {
@@ -104,47 +96,21 @@ var readCmd = &cobra.Command{
 				namespace = "default"
 			}
 
-			sourceType := source.Type
-			if sourceType == "" {
+			if source.Type == "" {
 				return fmt.Errorf("type is required for source %q in namespace %q", source.Name, namespace)
 			}
 
-			switch sourceType {
-			case "ConfigMap":
-				cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), source.Name, metav1.GetOptions{})
-				if err != nil {
-					return fmt.Errorf("failed to get configmap %s/%s: %w", namespace, source.Name, err)
-				}
-				for key, value := range cm.Data {
-					if value != "" {
-						envData = append(envData, envEntry{
-							key:        key,
-							value:      value,
-							sourceType: sourceType,
-							name:       source.Name,
-							namespace:  namespace,
-						})
-					}
-				}
-			case "Secret":
-				secret, err := clientset.CoreV1().Secrets(namespace).Get(context.Background(), source.Name, metav1.GetOptions{})
-				if err != nil {
-					return fmt.Errorf("failed to get secret %s/%s: %w", namespace, source.Name, err)
-				}
-				for key, value := range secret.Data {
-					if len(value) > 0 {
-						envData = append(envData, envEntry{
-							key:        key,
-							value:      strings.TrimRight(string(value), "\n\r"),
-							sourceType: sourceType,
-							name:       source.Name,
-							namespace:  namespace,
-						})
-					}
-				}
-			default:
-				return fmt.Errorf("unknown source type %q for %s/%s", sourceType, namespace, source.Name)
+			fetcher, ok := fetchers[source.Type]
+			if !ok {
+				return fmt.Errorf("unknown source type %q for %s/%s", source.Type, namespace, source.Name)
 			}
+
+			entries, err := fetcher.Fetch(clientset, source, namespace)
+			if err != nil {
+				return err
+			}
+
+			envData = append(envData, entries...)
 		}
 
 		// Create output directory if it doesn't exist
@@ -156,8 +122,8 @@ var readCmd = &cobra.Command{
 		// Write to output file with comments
 		output := ""
 		for _, entry := range envData {
-			output += fmt.Sprintf("# %s %s/%s\n", entry.sourceType, entry.namespace, entry.name)
-			output += fmt.Sprintf("%s=%s\n", entry.key, entry.value)
+			output += fmt.Sprintf("# %s %s/%s\n", entry.SourceType, entry.Namespace, entry.Name)
+			output += fmt.Sprintf("%s=%s\n", entry.Key, entry.Value)
 		}
 		if err := os.WriteFile(outputPath, []byte(output), 0644); err != nil {
 			return fmt.Errorf("failed to write output file: %w", err)
