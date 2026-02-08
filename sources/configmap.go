@@ -23,9 +23,10 @@ func (f *ConfigMapFetcher) Fetch(clientset *kubernetes.Clientset, source Source)
 	var transformConfigs []transformations.Config
 	for _, tc := range source.Transformations {
 		transformConfigs = append(transformConfigs, transformations.Config{
-			Type:   tc.Type,
-			Target: tc.Target,
-			Value:  tc.Value,
+			Type:      tc.Type,
+			Target:    tc.Target,
+			Value:     tc.Value,
+			Variables: tc.Variables,
 		})
 	}
 

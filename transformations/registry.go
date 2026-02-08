@@ -4,9 +4,10 @@ import "fmt"
 
 // Config represents a transformation configuration from YAML
 type Config struct {
-	Type   string
-	Target string
-	Value  string
+	Type      string
+	Target    string
+	Value     string
+	Variables []string
 }
 
 // BuildTransformation creates a Transformation from a config
@@ -30,9 +31,30 @@ func BuildTransformation(cfg Config) (Transformation, Target, error) {
 	}
 }
 
+// shouldApplyToVariable checks if the transformation should apply to the given variable
+func shouldApplyToVariable(varName string, variables []string) bool {
+	// If no variables specified, apply to all
+	if len(variables) == 0 {
+		return true
+	}
+
+	for _, v := range variables {
+		if v == varName {
+			return true
+		}
+	}
+
+	return false
+}
+
 // ApplyTransformations applies a list of transformations to a key-value pair
 func ApplyTransformations(key, value string, configs []Config) (string, string, error) {
 	for _, cfg := range configs {
+		// Skip if transformation is limited to specific variables and this isn't one
+		if !shouldApplyToVariable(key, cfg.Variables) {
+			continue
+		}
+
 		t, target, err := BuildTransformation(cfg)
 		if err != nil {
 			return key, value, err
