@@ -16,9 +16,8 @@ import (
 )
 
 type Config struct {
-	KubeContexts []string         `yaml:"kube-contexts"`
-	Contexts     []string         `yaml:"contexts"`
-	Sources      []sources.Source `yaml:"sources"`
+	Contexts []string         `yaml:"contexts"`
+	Sources  []sources.Source `yaml:"sources"`
 }
 
 var kubeContext string
@@ -40,10 +39,6 @@ var readCmd = &cobra.Command{
 			return fmt.Errorf("failed to parse .enver.yaml: %w", err)
 		}
 
-		if len(config.KubeContexts) == 0 {
-			return fmt.Errorf("no kube-contexts found in .enver.yaml")
-		}
-
 		if len(config.Sources) == 0 {
 			return fmt.Errorf("no sources found in .enver.yaml")
 		}
@@ -62,16 +57,16 @@ var readCmd = &cobra.Command{
 			}
 		}
 
-		selected := kubeContext
-		if selected == "" {
-			prompt := promptui.Select{
-				Label: "Select kubectl context",
-				Items: config.KubeContexts,
+		// Filter sources based on selected contexts and check if any require Kubernetes
+		var filteredSources []sources.Source
+		needsKubernetes := false
+		for _, source := range config.Sources {
+			if !source.ShouldInclude(selectedContexts) {
+				continue
 			}
-
-			_, selected, err = prompt.Run()
-			if err != nil {
-				return fmt.Errorf("selection failed: %w", err)
+			filteredSources = append(filteredSources, source)
+			if source.Type == "ConfigMap" || source.Type == "Secret" {
+				needsKubernetes = true
 			}
 		}
 
@@ -82,19 +77,53 @@ var readCmd = &cobra.Command{
 		}
 		kubeconfigPath := filepath.Join(homeDir, ".kube", "config")
 
-		// Load kubeconfig with the selected context
-		kubeconfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-			&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
-			&clientcmd.ConfigOverrides{CurrentContext: selected},
-		).ClientConfig()
-		if err != nil {
-			return fmt.Errorf("failed to load kubeconfig: %w", err)
-		}
+		var clientset *kubernetes.Clientset
 
-		// Create Kubernetes client
-		clientset, err := kubernetes.NewForConfig(kubeconfig)
-		if err != nil {
-			return fmt.Errorf("failed to create kubernetes client: %w", err)
+		// Only set up Kubernetes client if needed
+		if needsKubernetes {
+			selectedKubeContext := kubeContext
+			if selectedKubeContext == "" {
+				// Load kubeconfig to get available contexts
+				kubeConfig, err := clientcmd.LoadFromFile(kubeconfigPath)
+				if err != nil {
+					return fmt.Errorf("failed to load kubeconfig: %w", err)
+				}
+
+				// Get list of context names
+				var contextNames []string
+				for name := range kubeConfig.Contexts {
+					contextNames = append(contextNames, name)
+				}
+
+				if len(contextNames) == 0 {
+					return fmt.Errorf("no kubectl contexts found in kubeconfig")
+				}
+
+				prompt := promptui.Select{
+					Label: "Select kubectl context",
+					Items: contextNames,
+				}
+
+				_, selectedKubeContext, err = prompt.Run()
+				if err != nil {
+					return fmt.Errorf("kubectl context selection failed: %w", err)
+				}
+			}
+
+			// Load kubeconfig with the selected context
+			restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+				&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
+				&clientcmd.ConfigOverrides{CurrentContext: selectedKubeContext},
+			).ClientConfig()
+			if err != nil {
+				return fmt.Errorf("failed to load kubeconfig: %w", err)
+			}
+
+			// Create Kubernetes client
+			clientset, err = kubernetes.NewForConfig(restConfig)
+			if err != nil {
+				return fmt.Errorf("failed to create kubernetes client: %w", err)
+			}
 		}
 
 		// Map of source types to their fetchers
@@ -108,12 +137,7 @@ var readCmd = &cobra.Command{
 		var envData []sources.EnvEntry
 
 		// Get each source and collect its data
-		for _, source := range config.Sources {
-			// Check if source should be included based on contexts
-			if !source.ShouldInclude(selectedContexts) {
-				continue
-			}
-
+		for _, source := range filteredSources {
 			namespace := source.Namespace
 			if namespace == "" {
 				namespace = "default"
@@ -158,7 +182,7 @@ var readCmd = &cobra.Command{
 }
 
 func init() {
-	readCmd.Flags().StringVar(&kubeContext, "kube-context", "", "kubectl context to use (prompts if not provided)")
+	readCmd.Flags().StringVar(&kubeContext, "kube-context", "", "kubectl context to use (prompts if needed and not provided)")
 	readCmd.Flags().StringVarP(&outputPath, "output", "o", "generated/.env", "output file path for the .env file")
 	readCmd.Flags().StringArrayVarP(&contextFlags, "context", "c", []string{}, "context for filtering sources (can be repeated, prompts if not provided and contexts are defined)")
 	rootCmd.AddCommand(readCmd)
