@@ -7,6 +7,7 @@ import (
 
 	"enver/sources"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -27,6 +28,8 @@ type ExecuteConfig struct {
 }
 
 var executeKubeContext string
+var executeNames []string
+var executeAll bool
 
 var executeCmd = &cobra.Command{
 	Use:   "execute",
@@ -51,9 +54,61 @@ var executeCmd = &cobra.Command{
 			return fmt.Errorf("no sources found in .enver.yaml")
 		}
 
-		// Check if any execution needs Kubernetes
+		// Determine which executions to run
+		var selectedExecutions []Execution
+
+		if executeAll {
+			// Run all executions
+			selectedExecutions = config.Executions
+		} else if len(executeNames) > 0 {
+			// Run specified executions
+			executionMap := make(map[string]Execution)
+			for _, exec := range config.Executions {
+				executionMap[exec.Name] = exec
+			}
+
+			for _, name := range executeNames {
+				exec, ok := executionMap[name]
+				if !ok {
+					return fmt.Errorf("execution %q not found in .enver.yaml", name)
+				}
+				selectedExecutions = append(selectedExecutions, exec)
+			}
+		} else {
+			// Prompt user to select executions
+			var executionNames []string
+			for _, exec := range config.Executions {
+				executionNames = append(executionNames, exec.Name)
+			}
+
+			var selectedNames []string
+			prompt := &survey.MultiSelect{
+				Message: "Select executions to run:",
+				Options: executionNames,
+			}
+
+			err := survey.AskOne(prompt, &selectedNames)
+			if err != nil {
+				return fmt.Errorf("execution selection failed: %w", err)
+			}
+
+			if len(selectedNames) == 0 {
+				return fmt.Errorf("no executions selected")
+			}
+
+			executionMap := make(map[string]Execution)
+			for _, exec := range config.Executions {
+				executionMap[exec.Name] = exec
+			}
+
+			for _, name := range selectedNames {
+				selectedExecutions = append(selectedExecutions, executionMap[name])
+			}
+		}
+
+		// Check if any selected execution needs Kubernetes
 		needsKubernetes := false
-		for _, execution := range config.Executions {
+		for _, execution := range selectedExecutions {
 			for _, source := range config.Sources {
 				if !source.ShouldInclude(execution.Contexts) {
 					continue
@@ -131,8 +186,8 @@ var executeCmd = &cobra.Command{
 			"EnvFile":   &sources.EnvFileFetcher{},
 		}
 
-		// Execute each execution
-		for _, execution := range config.Executions {
+		// Execute each selected execution
+		for _, execution := range selectedExecutions {
 			fmt.Printf("Executing: %s\n", execution.Name)
 
 			// Collect all env vars with their source info
@@ -192,5 +247,7 @@ var executeCmd = &cobra.Command{
 
 func init() {
 	executeCmd.Flags().StringVar(&executeKubeContext, "kube-context", "", "kubectl context to use (prompts if needed and not provided)")
+	executeCmd.Flags().StringArrayVar(&executeNames, "name", []string{}, "execution name to run (can be repeated)")
+	executeCmd.Flags().BoolVar(&executeAll, "all", false, "run all executions")
 	rootCmd.AddCommand(executeCmd)
 }
