@@ -138,6 +138,55 @@ sources:
 
 Variables listed in `exclude` will be filtered out and not included in the generated `.env` file.
 
+### Transformations
+
+You can apply transformations to variable keys or values:
+
+```yaml
+sources:
+  - type: ConfigMap
+    name: my-config
+    transformations:
+      # Add prefix to all variable keys
+      - type: prefix
+        target: key
+        value: "APP_"
+
+      # Decode base64 values for specific variables
+      - type: base64_decode
+        target: value
+        variables:
+          - ENCODED_SECRET
+          - ENCODED_TOKEN
+
+      # Add suffix to specific variable values
+      - type: suffix
+        target: value
+        value: "_prod"
+        variables:
+          - DATABASE_HOST
+```
+
+#### Available Transformations
+
+| Type | Description | Requires `value` |
+|------|-------------|------------------|
+| `base64_decode` | Decode base64 encoded string | No |
+| `base64_encode` | Encode string to base64 | No |
+| `prefix` | Add prefix to string | Yes |
+| `suffix` | Add suffix to string | Yes |
+
+#### Transformation Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `type` | Yes | Transformation type (see table above) |
+| `target` | Yes | What to transform: `key` or `value` |
+| `value` | For prefix/suffix | The string to add |
+| `variables` | No | Limit to specific variable names (empty = apply to all) |
+
+Transformations are applied in order as configured.
+
 ### Executions
 
 Define predefined generation tasks that can be run with `enver execute`:
