@@ -16,6 +16,7 @@ type Source struct {
 	Name      string `yaml:"name"`
 	Namespace string `yaml:"namespace"`
 	Type      string `yaml:"type"`
+	Path      string `yaml:"path"`
 }
 
 // Fetcher is the interface that all source types must implement

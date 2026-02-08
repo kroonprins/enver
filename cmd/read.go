@@ -84,6 +84,7 @@ var readCmd = &cobra.Command{
 		fetchers := map[string]sources.Fetcher{
 			"ConfigMap": &sources.ConfigMapFetcher{},
 			"Secret":    &sources.SecretFetcher{},
+			"EnvFile":   &sources.EnvFileFetcher{},
 		}
 
 		// Collect all env vars with their source info
