@@ -22,14 +22,22 @@ type SourceVariables struct {
 	Exclude []string `yaml:"exclude"`
 }
 
+// TransformationConfig defines a transformation to apply to variables
+type TransformationConfig struct {
+	Type   string `yaml:"type"`   // base64_decode, base64_encode, prefix, suffix
+	Target string `yaml:"target"` // key or value
+	Value  string `yaml:"value"`  // parameter for prefix/suffix
+}
+
 // Source represents a source configuration from .enver.yaml
 type Source struct {
-	Name      string          `yaml:"name"`
-	Namespace string          `yaml:"namespace"`
-	Type      string          `yaml:"type"`
-	Path      string          `yaml:"path"`
-	Contexts  SourceContexts  `yaml:"contexts"`
-	Variables SourceVariables `yaml:"variables"`
+	Name            string                 `yaml:"name"`
+	Namespace       string                 `yaml:"namespace"`
+	Type            string                 `yaml:"type"`
+	Path            string                 `yaml:"path"`
+	Contexts        SourceContexts         `yaml:"contexts"`
+	Variables       SourceVariables        `yaml:"variables"`
+	Transformations []TransformationConfig `yaml:"transformations"`
 }
 
 // ShouldExcludeVariable returns true if the variable should be excluded

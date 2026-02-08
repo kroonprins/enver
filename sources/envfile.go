@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	"enver/transformations"
+
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -21,6 +23,16 @@ func (f *EnvFileFetcher) Fetch(clientset *kubernetes.Clientset, source Source) (
 		return nil, fmt.Errorf("failed to open env file %s: %w", source.Path, err)
 	}
 	defer file.Close()
+
+	// Convert transformation configs
+	var transformConfigs []transformations.Config
+	for _, tc := range source.Transformations {
+		transformConfigs = append(transformConfigs, transformations.Config{
+			Type:   tc.Type,
+			Target: tc.Target,
+			Value:  tc.Value,
+		})
+	}
 
 	var entries []EnvEntry
 	scanner := bufio.NewScanner(file)
@@ -43,9 +55,15 @@ func (f *EnvFileFetcher) Fetch(clientset *kubernetes.Clientset, source Source) (
 		value := strings.TrimSpace(parts[1])
 
 		if key != "" && !source.ShouldExcludeVariable(key) {
+			// Apply transformations
+			transformedKey, transformedValue, err := transformations.ApplyTransformations(key, value, transformConfigs)
+			if err != nil {
+				return nil, fmt.Errorf("failed to apply transformation: %w", err)
+			}
+
 			entries = append(entries, EnvEntry{
-				Key:        key,
-				Value:      value,
+				Key:        transformedKey,
+				Value:      transformedValue,
 				SourceType: "EnvFile",
 				Name:       source.Path,
 				Namespace:  "",

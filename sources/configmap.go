@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"enver/transformations"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -17,12 +19,28 @@ func (f *ConfigMapFetcher) Fetch(clientset *kubernetes.Clientset, source Source)
 		return nil, fmt.Errorf("failed to get configmap %s/%s: %w", namespace, source.Name, err)
 	}
 
+	// Convert transformation configs
+	var transformConfigs []transformations.Config
+	for _, tc := range source.Transformations {
+		transformConfigs = append(transformConfigs, transformations.Config{
+			Type:   tc.Type,
+			Target: tc.Target,
+			Value:  tc.Value,
+		})
+	}
+
 	var entries []EnvEntry
 	for key, value := range cm.Data {
 		if value != "" && !source.ShouldExcludeVariable(key) {
+			// Apply transformations
+			transformedKey, transformedValue, err := transformations.ApplyTransformations(key, value, transformConfigs)
+			if err != nil {
+				return nil, fmt.Errorf("failed to apply transformation: %w", err)
+			}
+
 			entries = append(entries, EnvEntry{
-				Key:        key,
-				Value:      value,
+				Key:        transformedKey,
+				Value:      transformedValue,
 				SourceType: "ConfigMap",
 				Name:       source.Name,
 				Namespace:  namespace,

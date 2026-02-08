@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"enver/transformations"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -18,12 +20,30 @@ func (f *SecretFetcher) Fetch(clientset *kubernetes.Clientset, source Source) ([
 		return nil, fmt.Errorf("failed to get secret %s/%s: %w", namespace, source.Name, err)
 	}
 
+	// Convert transformation configs
+	var transformConfigs []transformations.Config
+	for _, tc := range source.Transformations {
+		transformConfigs = append(transformConfigs, transformations.Config{
+			Type:   tc.Type,
+			Target: tc.Target,
+			Value:  tc.Value,
+		})
+	}
+
 	var entries []EnvEntry
 	for key, value := range secret.Data {
 		if len(value) > 0 && !source.ShouldExcludeVariable(key) {
+			strValue := strings.TrimRight(string(value), "\n\r")
+
+			// Apply transformations
+			transformedKey, transformedValue, err := transformations.ApplyTransformations(key, strValue, transformConfigs)
+			if err != nil {
+				return nil, fmt.Errorf("failed to apply transformation: %w", err)
+			}
+
 			entries = append(entries, EnvEntry{
-				Key:        key,
-				Value:      strings.TrimRight(string(value), "\n\r"),
+				Key:        transformedKey,
+				Value:      transformedValue,
 				SourceType: "Secret",
 				Name:       source.Name,
 				Namespace:  namespace,
