@@ -24,10 +24,10 @@ var kubeContext string
 var outputPath string
 var contextFlags []string
 
-var readCmd = &cobra.Command{
-	Use:   "read",
-	Short: "Read data from ConfigMaps and Secrets",
-	Long:  `Reads the .enver.yaml file, selects a kubectl context, and writes all data from ConfigMaps and Secrets defined in sources to a .env file.`,
+var generateCmd = &cobra.Command{
+	Use:   "generate",
+	Short: "Generate .env file from ConfigMaps, Secrets and EnvFiles",
+	Long:  `Reads the .enver.yaml file, selects a kubectl context if needed, and generates a .env file from ConfigMaps, Secrets and EnvFiles defined in sources.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		content, err := os.ReadFile(".enver.yaml")
 		if err != nil {
@@ -182,8 +182,8 @@ var readCmd = &cobra.Command{
 }
 
 func init() {
-	readCmd.Flags().StringVar(&kubeContext, "kube-context", "", "kubectl context to use (prompts if needed and not provided)")
-	readCmd.Flags().StringVarP(&outputPath, "output", "o", "generated/.env", "output file path for the .env file")
-	readCmd.Flags().StringArrayVarP(&contextFlags, "context", "c", []string{}, "context for filtering sources (can be repeated, prompts if not provided and contexts are defined)")
-	rootCmd.AddCommand(readCmd)
+	generateCmd.Flags().StringVar(&kubeContext, "kube-context", "", "kubectl context to use (prompts if needed and not provided)")
+	generateCmd.Flags().StringVarP(&outputPath, "output", "o", "generated/.env", "output file path for the .env file")
+	generateCmd.Flags().StringArrayVarP(&contextFlags, "context", "c", []string{}, "context for filtering sources (can be repeated, prompts if not provided and contexts are defined)")
+	rootCmd.AddCommand(generateCmd)
 }
