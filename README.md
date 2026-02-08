@@ -28,7 +28,7 @@ enver generate [flags]
 
 ### execute
 
-Execute all predefined generation tasks from `.enver.yaml`.
+Execute predefined generation tasks from `.enver.yaml`.
 
 ```bash
 enver execute [flags]
@@ -38,7 +38,11 @@ enver execute [flags]
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
+| `--all` | | `false` | Run all executions |
+| `--name` | | | Execution name to run (can be repeated) |
 | `--kube-context` | | | Kubernetes context to use |
+
+If neither `--all` nor `--name` is provided, you'll be prompted to select which executions to run.
 
 ## Configuration
 
@@ -200,7 +204,20 @@ enver generate -c production --kube-context prod-cluster -o .env.production
 
 ### Execute predefined tasks
 
-Run all predefined generation tasks:
+Run all executions:
+
+```bash
+enver execute --all
+```
+
+Run specific executions by name:
+
+```bash
+enver execute --name local
+enver execute --name local --name production
+```
+
+Interactive selection (prompts to choose executions):
 
 ```bash
 enver execute
@@ -209,7 +226,7 @@ enver execute
 With a specific Kubernetes context:
 
 ```bash
-enver execute --kube-context prod-cluster
+enver execute --all --kube-context prod-cluster
 ```
 
 ## Output Format
