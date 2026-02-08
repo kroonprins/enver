@@ -110,6 +110,34 @@ sources:
     name: shared-config
 ```
 
+### Variable Exclusion
+
+You can exclude specific environment variables from a source:
+
+```yaml
+sources:
+  - type: ConfigMap
+    name: my-config
+    variables:
+      exclude:
+        - DEBUG
+        - INTERNAL_KEY
+
+  - type: Secret
+    name: app-secrets
+    variables:
+      exclude:
+        - TEMP_TOKEN
+
+  - type: EnvFile
+    path: ./local.env
+    variables:
+      exclude:
+        - LOCAL_ONLY_VAR
+```
+
+Variables listed in `exclude` will be filtered out and not included in the generated `.env` file.
+
 ### Executions
 
 Define predefined generation tasks that can be run with `enver execute`:
