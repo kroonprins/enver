@@ -19,7 +19,7 @@ func (f *ConfigMapFetcher) Fetch(clientset *kubernetes.Clientset, source Source)
 
 	var entries []EnvEntry
 	for key, value := range cm.Data {
-		if value != "" {
+		if value != "" && !source.ShouldExcludeVariable(key) {
 			entries = append(entries, EnvEntry{
 				Key:        key,
 				Value:      value,

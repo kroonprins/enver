@@ -20,7 +20,7 @@ func (f *SecretFetcher) Fetch(clientset *kubernetes.Clientset, source Source) ([
 
 	var entries []EnvEntry
 	for key, value := range secret.Data {
-		if len(value) > 0 {
+		if len(value) > 0 && !source.ShouldExcludeVariable(key) {
 			entries = append(entries, EnvEntry{
 				Key:        key,
 				Value:      strings.TrimRight(string(value), "\n\r"),

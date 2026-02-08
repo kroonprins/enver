@@ -42,7 +42,7 @@ func (f *EnvFileFetcher) Fetch(clientset *kubernetes.Clientset, source Source) (
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
 
-		if key != "" {
+		if key != "" && !source.ShouldExcludeVariable(key) {
 			entries = append(entries, EnvEntry{
 				Key:        key,
 				Value:      value,

@@ -17,13 +17,29 @@ type SourceContexts struct {
 	Exclude []string `yaml:"exclude"`
 }
 
+// SourceVariables defines variable-level filtering for a source
+type SourceVariables struct {
+	Exclude []string `yaml:"exclude"`
+}
+
 // Source represents a source configuration from .enver.yaml
 type Source struct {
-	Name      string         `yaml:"name"`
-	Namespace string         `yaml:"namespace"`
-	Type      string         `yaml:"type"`
-	Path      string         `yaml:"path"`
-	Contexts  SourceContexts `yaml:"contexts"`
+	Name      string          `yaml:"name"`
+	Namespace string          `yaml:"namespace"`
+	Type      string          `yaml:"type"`
+	Path      string          `yaml:"path"`
+	Contexts  SourceContexts  `yaml:"contexts"`
+	Variables SourceVariables `yaml:"variables"`
+}
+
+// ShouldExcludeVariable returns true if the variable should be excluded
+func (s *Source) ShouldExcludeVariable(varName string) bool {
+	for _, excluded := range s.Variables.Exclude {
+		if excluded == varName {
+			return true
+		}
+	}
+	return false
 }
 
 // ShouldInclude returns true if the source should be included for the given contexts
