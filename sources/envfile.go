@@ -11,7 +11,7 @@ import (
 
 type EnvFileFetcher struct{}
 
-func (f *EnvFileFetcher) Fetch(clientset *kubernetes.Clientset, source Source, namespace string) ([]EnvEntry, error) {
+func (f *EnvFileFetcher) Fetch(clientset *kubernetes.Clientset, source Source) ([]EnvEntry, error) {
 	if source.Path == "" {
 		return nil, fmt.Errorf("path is required for EnvFile source %q", source.Name)
 	}

@@ -11,7 +11,8 @@ import (
 
 type SecretFetcher struct{}
 
-func (f *SecretFetcher) Fetch(clientset *kubernetes.Clientset, source Source, namespace string) ([]EnvEntry, error) {
+func (f *SecretFetcher) Fetch(clientset *kubernetes.Clientset, source Source) ([]EnvEntry, error) {
+	namespace := source.GetNamespace()
 	secret, err := clientset.CoreV1().Secrets(namespace).Get(context.Background(), source.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get secret %s/%s: %w", namespace, source.Name, err)

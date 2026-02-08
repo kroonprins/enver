@@ -64,7 +64,15 @@ func (s *Source) ShouldInclude(contexts []string) bool {
 	return true
 }
 
+// GetNamespace returns the namespace, defaulting to "default" if not specified
+func (s *Source) GetNamespace() string {
+	if s.Namespace == "" {
+		return "default"
+	}
+	return s.Namespace
+}
+
 // Fetcher is the interface that all source types must implement
 type Fetcher interface {
-	Fetch(clientset *kubernetes.Clientset, source Source, namespace string) ([]EnvEntry, error)
+	Fetch(clientset *kubernetes.Clientset, source Source) ([]EnvEntry, error)
 }

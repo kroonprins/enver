@@ -10,7 +10,8 @@ import (
 
 type ConfigMapFetcher struct{}
 
-func (f *ConfigMapFetcher) Fetch(clientset *kubernetes.Clientset, source Source, namespace string) ([]EnvEntry, error) {
+func (f *ConfigMapFetcher) Fetch(clientset *kubernetes.Clientset, source Source) ([]EnvEntry, error) {
+	namespace := source.GetNamespace()
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), source.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get configmap %s/%s: %w", namespace, source.Name, err)

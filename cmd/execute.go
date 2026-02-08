@@ -200,21 +200,16 @@ var executeCmd = &cobra.Command{
 					continue
 				}
 
-				namespace := source.Namespace
-				if namespace == "" {
-					namespace = "default"
-				}
-
 				if source.Type == "" {
-					return fmt.Errorf("type is required for source %q in namespace %q", source.Name, namespace)
+					return fmt.Errorf("type is required for source %q in namespace %q", source.Name, source.GetNamespace())
 				}
 
 				fetcher, ok := fetchers[source.Type]
 				if !ok {
-					return fmt.Errorf("unknown source type %q for %s/%s", source.Type, namespace, source.Name)
+					return fmt.Errorf("unknown source type %q for %s/%s", source.Type, source.GetNamespace(), source.Name)
 				}
 
-				entries, err := fetcher.Fetch(clientset, source, namespace)
+				entries, err := fetcher.Fetch(clientset, source)
 				if err != nil {
 					return err
 				}
