@@ -8,18 +8,36 @@ A CLI tool that generates `.env` files from Kubernetes ConfigMaps, Secrets, and 
 go build -o enver
 ```
 
-## Usage
+## Commands
+
+### generate
+
+Generate a single `.env` file interactively or with flags.
 
 ```bash
 enver generate [flags]
 ```
 
-### Flags
+#### Flags
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
 | `--output` | `-o` | `generated/.env` | Output file path for the .env file |
 | `--context` | `-c` | | Context for filtering sources (can be repeated) |
+| `--kube-context` | | | Kubernetes context to use |
+
+### execute
+
+Execute all predefined generation tasks from `.enver.yaml`.
+
+```bash
+enver execute [flags]
+```
+
+#### Flags
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
 | `--kube-context` | | | Kubernetes context to use |
 
 ## Configuration
@@ -88,6 +106,59 @@ sources:
     name: shared-config
 ```
 
+### Executions
+
+Define predefined generation tasks that can be run with `enver execute`:
+
+```yaml
+contexts:
+  - local
+  - development
+  - production
+
+sources:
+  - type: EnvFile
+    path: ./local.env
+    contexts:
+      include:
+        - local
+  - type: ConfigMap
+    name: app-config
+    contexts:
+      include:
+        - development
+        - production
+  - type: Secret
+    name: app-secrets
+    contexts:
+      include:
+        - production
+
+executions:
+  - name: local
+    output: ./generated/local.env
+    contexts:
+      - local
+
+  - name: development
+    output: ./generated/dev.env
+    contexts:
+      - development
+
+  - name: production
+    output: ./generated/prod.env
+    contexts:
+      - production
+```
+
+#### Execution Fields
+
+| Field | Description |
+|-------|-------------|
+| `name` | Identifier for the execution (displayed during execution) |
+| `output` | Path for the generated .env file |
+| `contexts` | List of contexts to filter sources |
+
 ## Examples
 
 ### Basic usage
@@ -125,6 +196,20 @@ enver generate --kube-context kind-kind
 
 ```bash
 enver generate -c production --kube-context prod-cluster -o .env.production
+```
+
+### Execute predefined tasks
+
+Run all predefined generation tasks:
+
+```bash
+enver execute
+```
+
+With a specific Kubernetes context:
+
+```bash
+enver execute --kube-context prod-cluster
 ```
 
 ## Output Format
