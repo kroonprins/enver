@@ -7,6 +7,7 @@ import (
 
 	"enver/sources"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -50,16 +51,15 @@ var readCmd = &cobra.Command{
 		// Select contexts for filtering sources
 		selectedContexts := contextFlags
 		if len(selectedContexts) == 0 && len(config.Contexts) > 0 {
-			prompt := promptui.Select{
-				Label: "Select context",
-				Items: config.Contexts,
+			prompt := &survey.MultiSelect{
+				Message: "Select contexts (press Enter for none, Space to select):",
+				Options: config.Contexts,
 			}
 
-			_, selectedContext, err := prompt.Run()
+			err := survey.AskOne(prompt, &selectedContexts)
 			if err != nil {
 				return fmt.Errorf("context selection failed: %w", err)
 			}
-			selectedContexts = []string{selectedContext}
 		}
 
 		selected := kubeContext
