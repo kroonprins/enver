@@ -1,0 +1,15 @@
+kube-contexts:
+  - kind-kind
+
+sources:
+  - type: ConfigMap
+    namespace: default
+    name: configmap1
+  - type: ConfigMap
+    name: configmap-ns1
+    namespace: ns1
+  - type: Secret
+    name: secret1
+  - type: Secret
+    name: secret1-ns1
+    namespace: ns1
