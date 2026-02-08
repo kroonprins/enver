@@ -26,14 +26,24 @@ type Source struct {
 	Contexts  SourceContexts `yaml:"contexts"`
 }
 
-// ShouldInclude returns true if the source should be included for the given context
-func (s *Source) ShouldInclude(context string) bool {
-	// If include list is specified, context must be in it
+// ShouldInclude returns true if the source should be included for the given contexts
+func (s *Source) ShouldInclude(contexts []string) bool {
+	// If no contexts provided, include the source
+	if len(contexts) == 0 {
+		return true
+	}
+
+	// If include list is specified, at least one context must be in it
 	if len(s.Contexts.Include) > 0 {
 		found := false
-		for _, c := range s.Contexts.Include {
-			if c == context {
-				found = true
+		for _, selectedCtx := range contexts {
+			for _, c := range s.Contexts.Include {
+				if c == selectedCtx {
+					found = true
+					break
+				}
+			}
+			if found {
 				break
 			}
 		}
@@ -42,10 +52,12 @@ func (s *Source) ShouldInclude(context string) bool {
 		}
 	}
 
-	// If exclude list is specified, context must not be in it
-	for _, c := range s.Contexts.Exclude {
-		if c == context {
-			return false
+	// If exclude list is specified, none of the contexts can be in it
+	for _, selectedCtx := range contexts {
+		for _, c := range s.Contexts.Exclude {
+			if c == selectedCtx {
+				return false
+			}
 		}
 	}
 

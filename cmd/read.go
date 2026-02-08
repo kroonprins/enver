@@ -22,7 +22,7 @@ type Config struct {
 
 var kubeContext string
 var outputPath string
-var contextFlag string
+var contextFlags []string
 
 var readCmd = &cobra.Command{
 	Use:   "read",
@@ -47,18 +47,19 @@ var readCmd = &cobra.Command{
 			return fmt.Errorf("no sources found in .enver.yaml")
 		}
 
-		// Select context for filtering sources
-		selectedContext := contextFlag
-		if selectedContext == "" && len(config.Contexts) > 0 {
+		// Select contexts for filtering sources
+		selectedContexts := contextFlags
+		if len(selectedContexts) == 0 && len(config.Contexts) > 0 {
 			prompt := promptui.Select{
 				Label: "Select context",
 				Items: config.Contexts,
 			}
 
-			_, selectedContext, err = prompt.Run()
+			_, selectedContext, err := prompt.Run()
 			if err != nil {
 				return fmt.Errorf("context selection failed: %w", err)
 			}
+			selectedContexts = []string{selectedContext}
 		}
 
 		selected := kubeContext
@@ -108,8 +109,8 @@ var readCmd = &cobra.Command{
 
 		// Get each source and collect its data
 		for _, source := range config.Sources {
-			// Check if source should be included based on context
-			if selectedContext != "" && !source.ShouldInclude(selectedContext) {
+			// Check if source should be included based on contexts
+			if !source.ShouldInclude(selectedContexts) {
 				continue
 			}
 
@@ -159,6 +160,6 @@ var readCmd = &cobra.Command{
 func init() {
 	readCmd.Flags().StringVar(&kubeContext, "kube-context", "", "kubectl context to use (prompts if not provided)")
 	readCmd.Flags().StringVarP(&outputPath, "output", "o", "generated/.env", "output file path for the .env file")
-	readCmd.Flags().StringVarP(&contextFlag, "context", "c", "", "context for filtering sources (prompts if not provided and contexts are defined)")
+	readCmd.Flags().StringArrayVarP(&contextFlags, "context", "c", []string{}, "context for filtering sources (can be repeated, prompts if not provided and contexts are defined)")
 	rootCmd.AddCommand(readCmd)
 }
