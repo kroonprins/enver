@@ -341,6 +341,21 @@ DATABASE_PASSWORD=secret123
 DEBUG=true
 ```
 
+## Gitignore Protection
+
+When running inside a git repository, enver checks if generated files are covered by `.gitignore`. This applies to:
+
+- Output `.env` files from `generate` and `execute` commands
+- Files created by the `file` transformation
+
+If a file is not gitignored, you'll be prompted with options:
+
+1. **Add file**: Add the specific file path to `.gitignore`
+2. **Add directory**: Add the file's directory to `.gitignore` (with trailing `/`)
+3. **Skip**: Do nothing
+
+This helps prevent accidentally committing sensitive environment files or secrets to version control.
+
 ## Interactive Prompts
 
 When flags are not provided:
