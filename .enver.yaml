@@ -1,5 +1,20 @@
-kube-contexts:
-  - kind-kind
+contexts:
+  - int
+  - acc
+  - local-db
+
+executions:
+  - name: int
+    output: generated/int.env
+    kube-context: kind-kind
+    contexts:
+      - int
+  - name: int-local
+    output: generated/int-local.env
+    kube-context: kind-kind
+    contexts:
+      - int
+      - local-db
 
 sources:
   - type: ConfigMap
@@ -13,3 +28,39 @@ sources:
   - type: Secret
     name: secret1-ns1
     namespace: ns1
+    contexts:
+      exclude:
+        - local-db
+  - type: EnvFile
+    path: samples/int.env
+    contexts:
+      include:
+        - int
+    transformations:
+      - type: prefix
+        target: key
+        value: "APP_"
+      - type: base64_encode
+        target: value
+        variables:
+          - APP_DB_HOST
+  - type: EnvFile
+    path: samples/acc.env
+    contexts:
+      include:
+        - acc
+  - type: EnvFile
+    path: samples/local.db.env
+    contexts:
+      include:
+        - local-db
+    variables:
+      exclude:
+        - ANOTHER
+    transformations:
+      - type: file
+        target: value
+        output: generated/file.txt
+        key: FILE
+        variables:
+          - FILE
