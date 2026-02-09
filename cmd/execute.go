@@ -9,7 +9,6 @@ import (
 	"enver/sources"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/kubernetes"
@@ -143,34 +142,9 @@ var executeCmd = &cobra.Command{
 			var clientset *kubernetes.Clientset
 
 			if executionNeedsKubernetes {
-				// Determine kube-context: execution's kube-context > prompt
 				selectedKubeContext := execution.KubeContext
 				if selectedKubeContext == "" {
-					// Load kubeconfig to get available contexts
-					kubeConfig, err := clientcmd.LoadFromFile(kubeconfigPath)
-					if err != nil {
-						return fmt.Errorf("failed to load kubeconfig: %w", err)
-					}
-
-					// Get list of context names
-					var contextNames []string
-					for name := range kubeConfig.Contexts {
-						contextNames = append(contextNames, name)
-					}
-
-					if len(contextNames) == 0 {
-						return fmt.Errorf("no kubectl contexts found in kubeconfig")
-					}
-
-					prompt := promptui.Select{
-						Label: fmt.Sprintf("Select kubectl context for execution %q", execution.Name),
-						Items: contextNames,
-					}
-
-					_, selectedKubeContext, err = prompt.Run()
-					if err != nil {
-						return fmt.Errorf("kubectl context selection failed: %w", err)
-					}
+					return fmt.Errorf("execution %q requires Kubernetes sources but no kube-context is specified", execution.Name)
 				}
 
 				// Check cache first

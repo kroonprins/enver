@@ -240,11 +240,7 @@ executions:
 | `name` | Identifier for the execution (displayed during execution) |
 | `output` | Path for the generated .env file |
 | `contexts` | List of contexts to filter sources |
-| `kube-context` | Kubernetes context to use (optional, prompts if not specified) |
-
-The `kube-context` priority is:
-1. Execution's `kube-context` field
-2. Interactive prompt (if not specified)
+| `kube-context` | Kubernetes context to use (required if execution uses ConfigMap or Secret sources) |
 
 ## Examples
 
