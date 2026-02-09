@@ -1,5 +1,7 @@
 # enver
 
+> **Disclaimer:** This entire codebase was vibe coded with AI assistance. Use at your own risk. It probably works, but no guarantees were made and certainly none were kept.
+
 A CLI tool that generates `.env` files from Kubernetes ConfigMaps, Secrets, and local env files.
 
 ## Installation
