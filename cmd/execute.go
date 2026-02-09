@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"enver/sources"
 
@@ -16,9 +17,10 @@ import (
 )
 
 type Execution struct {
-	Name     string   `yaml:"name"`
-	Output   string   `yaml:"output"`
-	Contexts []string `yaml:"contexts"`
+	Name        string   `yaml:"name"`
+	Output      string   `yaml:"output"`
+	Contexts    []string `yaml:"contexts"`
+	KubeContext string   `yaml:"kube-context"`
 }
 
 type ExecuteConfig struct {
@@ -106,78 +108,12 @@ var executeCmd = &cobra.Command{
 			}
 		}
 
-		// Check if any selected execution needs Kubernetes
-		needsKubernetes := false
-		for _, execution := range selectedExecutions {
-			for _, source := range config.Sources {
-				if !source.ShouldInclude(execution.Contexts) {
-					continue
-				}
-				if source.Type == "ConfigMap" || source.Type == "Secret" {
-					needsKubernetes = true
-					break
-				}
-			}
-			if needsKubernetes {
-				break
-			}
-		}
-
 		// Build kubeconfig path
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return fmt.Errorf("failed to get home directory: %w", err)
 		}
 		kubeconfigPath := filepath.Join(homeDir, ".kube", "config")
-
-		var clientset *kubernetes.Clientset
-
-		// Only set up Kubernetes client if needed
-		if needsKubernetes {
-			selectedKubeContext := executeKubeContext
-			if selectedKubeContext == "" {
-				// Load kubeconfig to get available contexts
-				kubeConfig, err := clientcmd.LoadFromFile(kubeconfigPath)
-				if err != nil {
-					return fmt.Errorf("failed to load kubeconfig: %w", err)
-				}
-
-				// Get list of context names
-				var contextNames []string
-				for name := range kubeConfig.Contexts {
-					contextNames = append(contextNames, name)
-				}
-
-				if len(contextNames) == 0 {
-					return fmt.Errorf("no kubectl contexts found in kubeconfig")
-				}
-
-				prompt := promptui.Select{
-					Label: "Select kubectl context",
-					Items: contextNames,
-				}
-
-				_, selectedKubeContext, err = prompt.Run()
-				if err != nil {
-					return fmt.Errorf("kubectl context selection failed: %w", err)
-				}
-			}
-
-			// Load kubeconfig with the selected context
-			restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-				&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
-				&clientcmd.ConfigOverrides{CurrentContext: selectedKubeContext},
-			).ClientConfig()
-			if err != nil {
-				return fmt.Errorf("failed to load kubeconfig: %w", err)
-			}
-
-			// Create Kubernetes client
-			clientset, err = kubernetes.NewForConfig(restConfig)
-			if err != nil {
-				return fmt.Errorf("failed to create kubernetes client: %w", err)
-			}
-		}
 
 		// Map of source types to their fetchers
 		fetchers := map[string]sources.Fetcher{
@@ -186,9 +122,84 @@ var executeCmd = &cobra.Command{
 			"EnvFile":   &sources.EnvFileFetcher{},
 		}
 
+		// Cache for kubernetes clients by context
+		clientCache := make(map[string]*kubernetes.Clientset)
+
 		// Execute each selected execution
 		for _, execution := range selectedExecutions {
 			fmt.Printf("Executing: %s\n", execution.Name)
+
+			// Check if this execution needs Kubernetes
+			executionNeedsKubernetes := false
+			for _, source := range config.Sources {
+				if !source.ShouldInclude(execution.Contexts) {
+					continue
+				}
+				if source.Type == "ConfigMap" || source.Type == "Secret" {
+					executionNeedsKubernetes = true
+					break
+				}
+			}
+
+			var clientset *kubernetes.Clientset
+
+			if executionNeedsKubernetes {
+				// Determine kube-context: execution's kube-context > CLI flag > prompt
+				selectedKubeContext := execution.KubeContext
+				if selectedKubeContext == "" {
+					selectedKubeContext = executeKubeContext
+				}
+				if selectedKubeContext == "" {
+					// Load kubeconfig to get available contexts
+					kubeConfig, err := clientcmd.LoadFromFile(kubeconfigPath)
+					if err != nil {
+						return fmt.Errorf("failed to load kubeconfig: %w", err)
+					}
+
+					// Get list of context names
+					var contextNames []string
+					for name := range kubeConfig.Contexts {
+						contextNames = append(contextNames, name)
+					}
+
+					if len(contextNames) == 0 {
+						return fmt.Errorf("no kubectl contexts found in kubeconfig")
+					}
+
+					prompt := promptui.Select{
+						Label: fmt.Sprintf("Select kubectl context for execution %q", execution.Name),
+						Items: contextNames,
+					}
+
+					_, selectedKubeContext, err = prompt.Run()
+					if err != nil {
+						return fmt.Errorf("kubectl context selection failed: %w", err)
+					}
+				}
+
+				// Check cache first
+				if cached, ok := clientCache[selectedKubeContext]; ok {
+					clientset = cached
+				} else {
+					// Load kubeconfig with the selected context
+					restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+						&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
+						&clientcmd.ConfigOverrides{CurrentContext: selectedKubeContext},
+					).ClientConfig()
+					if err != nil {
+						return fmt.Errorf("failed to load kubeconfig: %w", err)
+					}
+
+					// Create Kubernetes client
+					clientset, err = kubernetes.NewForConfig(restConfig)
+					if err != nil {
+						return fmt.Errorf("failed to create kubernetes client: %w", err)
+					}
+
+					// Cache it
+					clientCache[selectedKubeContext] = clientset
+				}
+			}
 
 			// Collect all env vars with their source info
 			var envData []sources.EnvEntry
@@ -224,12 +235,12 @@ var executeCmd = &cobra.Command{
 			}
 
 			// Write to output file with comments
-			output := ""
+			var sb strings.Builder
 			for _, entry := range envData {
-				output += fmt.Sprintf("# %s %s/%s\n", entry.SourceType, entry.Namespace, entry.Name)
-				output += fmt.Sprintf("%s=%s\n", entry.Key, entry.Value)
+				sb.WriteString(fmt.Sprintf("# %s %s/%s\n", entry.SourceType, entry.Namespace, entry.Name))
+				sb.WriteString(fmt.Sprintf("%s=%s\n", entry.Key, entry.Value))
 			}
-			if err := os.WriteFile(execution.Output, []byte(output), 0644); err != nil {
+			if err := os.WriteFile(execution.Output, []byte(sb.String()), 0644); err != nil {
 				return fmt.Errorf("failed to write output file: %w", err)
 			}
 
@@ -241,7 +252,7 @@ var executeCmd = &cobra.Command{
 }
 
 func init() {
-	executeCmd.Flags().StringVar(&executeKubeContext, "kube-context", "", "kubectl context to use (prompts if needed and not provided)")
+	executeCmd.Flags().StringVar(&executeKubeContext, "kube-context", "", "kubectl context to use (overrides execution's kube-context)")
 	executeCmd.Flags().StringArrayVar(&executeNames, "name", []string{}, "execution name to run (can be repeated)")
 	executeCmd.Flags().BoolVar(&executeAll, "all", false, "run all executions")
 	rootCmd.AddCommand(executeCmd)
