@@ -223,11 +223,13 @@ executions:
 
   - name: development
     output: ./generated/dev.env
+    kube-context: dev-cluster
     contexts:
       - development
 
   - name: production
     output: ./generated/prod.env
+    kube-context: prod-cluster
     contexts:
       - production
 ```
@@ -239,6 +241,12 @@ executions:
 | `name` | Identifier for the execution (displayed during execution) |
 | `output` | Path for the generated .env file |
 | `contexts` | List of contexts to filter sources |
+| `kube-context` | Kubernetes context to use (optional, prompts if not specified) |
+
+The `kube-context` priority is:
+1. Execution's `kube-context` field
+2. CLI `--kube-context` flag (overrides all executions)
+3. Interactive prompt (if neither is specified)
 
 ## Examples
 
