@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"enver/gitutil"
 )
 
 // FileTransformation writes the value to a file and returns the file path
@@ -30,6 +32,11 @@ func (t *FileTransformation) TransformKeyValue(key, value string) (string, strin
 	// Write value to file
 	if err := os.WriteFile(t.Output, []byte(value), 0644); err != nil {
 		return key, value, fmt.Errorf("failed to write file %s: %w", t.Output, err)
+	}
+
+	// Check if output file should be added to .gitignore
+	if err := gitutil.EnsureGitignored(t.Output); err != nil {
+		return key, value, err
 	}
 
 	return t.Key, t.Output, nil

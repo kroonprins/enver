@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"enver/gitutil"
 	"enver/sources"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -215,6 +216,11 @@ var executeCmd = &cobra.Command{
 			}
 
 			fmt.Printf("  Wrote %d environment variables to %s\n", len(envData), execution.Output)
+
+			// Check if output file should be added to .gitignore
+			if err := gitutil.EnsureGitignored(execution.Output); err != nil {
+				return err
+			}
 		}
 
 		return nil
