@@ -40,7 +40,6 @@ enver execute [flags]
 |------|-------|---------|-------------|
 | `--all` | | `false` | Run all executions |
 | `--name` | | | Execution name to run (can be repeated) |
-| `--kube-context` | | | Kubernetes context to use |
 
 If neither `--all` nor `--name` is provided, you'll be prompted to select which executions to run.
 
@@ -245,8 +244,7 @@ executions:
 
 The `kube-context` priority is:
 1. Execution's `kube-context` field
-2. CLI `--kube-context` flag (overrides all executions)
-3. Interactive prompt (if neither is specified)
+2. Interactive prompt (if not specified)
 
 ## Examples
 
@@ -306,12 +304,6 @@ Interactive selection (prompts to choose executions):
 
 ```bash
 enver execute
-```
-
-With a specific Kubernetes context:
-
-```bash
-enver execute --all --kube-context prod-cluster
 ```
 
 ## Output Format

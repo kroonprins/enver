@@ -29,7 +29,6 @@ type ExecuteConfig struct {
 	Executions []Execution      `yaml:"executions"`
 }
 
-var executeKubeContext string
 var executeNames []string
 var executeAll bool
 
@@ -144,11 +143,8 @@ var executeCmd = &cobra.Command{
 			var clientset *kubernetes.Clientset
 
 			if executionNeedsKubernetes {
-				// Determine kube-context: execution's kube-context > CLI flag > prompt
+				// Determine kube-context: execution's kube-context > prompt
 				selectedKubeContext := execution.KubeContext
-				if selectedKubeContext == "" {
-					selectedKubeContext = executeKubeContext
-				}
 				if selectedKubeContext == "" {
 					// Load kubeconfig to get available contexts
 					kubeConfig, err := clientcmd.LoadFromFile(kubeconfigPath)
@@ -252,7 +248,6 @@ var executeCmd = &cobra.Command{
 }
 
 func init() {
-	executeCmd.Flags().StringVar(&executeKubeContext, "kube-context", "", "kubectl context to use (overrides execution's kube-context)")
 	executeCmd.Flags().StringArrayVar(&executeNames, "name", []string{}, "execution name to run (can be repeated)")
 	executeCmd.Flags().BoolVar(&executeAll, "all", false, "run all executions")
 	rootCmd.AddCommand(executeCmd)
