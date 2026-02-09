@@ -24,10 +24,12 @@ type SourceVariables struct {
 
 // TransformationConfig defines a transformation to apply to variables
 type TransformationConfig struct {
-	Type      string   `yaml:"type"`      // base64_decode, base64_encode, prefix, suffix
+	Type      string   `yaml:"type"`      // base64_decode, base64_encode, prefix, suffix, file
 	Target    string   `yaml:"target"`    // key or value
 	Value     string   `yaml:"value"`     // parameter for prefix/suffix
 	Variables []string `yaml:"variables"` // limit to these variable names (empty = apply to all)
+	Output    string   `yaml:"output"`    // output file path (for file transformation)
+	Key       string   `yaml:"key"`       // new key name (for file transformation)
 }
 
 // Source represents a source configuration from .enver.yaml

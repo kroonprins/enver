@@ -8,6 +8,8 @@ type Config struct {
 	Target    string
 	Value     string
 	Variables []string
+	Output    string
+	Key       string
 }
 
 // BuildTransformation creates a Transformation from a config
@@ -52,6 +54,21 @@ func ApplyTransformations(key, value string, configs []Config) (string, string, 
 	for _, cfg := range configs {
 		// Skip if transformation is limited to specific variables and this isn't one
 		if !shouldApplyToVariable(key, cfg.Variables) {
+			continue
+		}
+
+		// Handle file transformation specially since it modifies both key and value
+		if cfg.Type == "file" {
+			if cfg.Target != "" && cfg.Target != "value" {
+				return key, value, fmt.Errorf("file transformation can only be applied to values")
+			}
+			ft := &FileTransformation{Output: cfg.Output, Key: cfg.Key}
+			newKey, newValue, err := ft.TransformKeyValue(key, value)
+			if err != nil {
+				return key, value, err
+			}
+			key = newKey
+			value = newValue
 			continue
 		}
 

@@ -28,6 +28,8 @@ func (f *SecretFetcher) Fetch(clientset *kubernetes.Clientset, source Source) ([
 			Target:    tc.Target,
 			Value:     tc.Value,
 			Variables: tc.Variables,
+			Output:    tc.Output,
+			Key:       tc.Key,
 		})
 	}
 

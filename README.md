@@ -168,21 +168,45 @@ sources:
 
 #### Available Transformations
 
-| Type | Description | Requires `value` |
-|------|-------------|------------------|
-| `base64_decode` | Decode base64 encoded string | No |
-| `base64_encode` | Encode string to base64 | No |
-| `prefix` | Add prefix to string | Yes |
-| `suffix` | Add suffix to string | Yes |
+| Type | Description | Target | Additional Fields |
+|------|-------------|--------|-------------------|
+| `base64_decode` | Decode base64 encoded string | `key` or `value` | - |
+| `base64_encode` | Encode string to base64 | `key` or `value` | - |
+| `prefix` | Add prefix to string | `key` or `value` | `value` |
+| `suffix` | Add suffix to string | `key` or `value` | `value` |
+| `file` | Write value to file, replace with file path | `value` only | `output`, `key` |
 
 #### Transformation Fields
 
 | Field | Required | Description |
 |-------|----------|-------------|
 | `type` | Yes | Transformation type (see table above) |
-| `target` | Yes | What to transform: `key` or `value` |
+| `target` | For most types | What to transform: `key` or `value` |
 | `value` | For prefix/suffix | The string to add |
 | `variables` | No | Limit to specific variable names (empty = apply to all) |
+| `output` | For file | Output file path to write the value to |
+| `key` | For file | New environment variable name for the file path |
+
+#### File Transformation Example
+
+The `file` transformation writes the variable's value to a file and replaces the value with the file path:
+
+```yaml
+sources:
+  - type: Secret
+    name: my-certs
+    transformations:
+      - type: file
+        output: ./generated/cert.pem
+        key: CERT_FILE_PATH
+        variables:
+          - CERTIFICATE
+```
+
+This will:
+1. Take the value of `CERTIFICATE` from the secret
+2. Write it to `./generated/cert.pem`
+3. Output `CERT_FILE_PATH=./generated/cert.pem` in the .env file
 
 Transformations are applied in order as configured.
 
