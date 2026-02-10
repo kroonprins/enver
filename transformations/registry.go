@@ -32,6 +32,8 @@ func BuildTransformation(cfg Config) (Transformation, Target, error) {
 		return &Prefix{Value: cfg.Value}, target, nil
 	case "suffix":
 		return &Suffix{Value: cfg.Value}, target, nil
+	case "absolute_path":
+		return &AbsolutePath{}, target, nil
 	default:
 		return nil, target, fmt.Errorf("unknown transformation type: %s", cfg.Type)
 	}
