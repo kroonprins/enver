@@ -200,7 +200,7 @@ sources:
 | `target` | For most types | What to transform: `key` or `value` |
 | `value` | For prefix/suffix | The string to add |
 | `variables` | No | Limit to specific variable names (empty = apply to all) |
-| `output` | For file | Output file path to write the value to |
+| `output` | For file | Output file path to write the value to (relative paths are resolved against output directory) |
 | `key` | For file | New environment variable name for the file path |
 
 #### File Transformation Example
@@ -213,7 +213,7 @@ sources:
     name: my-certs
     transformations:
       - type: file
-        output: ./generated/cert.pem
+        output: cert.pem
         key: CERT_FILE_PATH
         variables:
           - CERTIFICATE
@@ -221,8 +221,10 @@ sources:
 
 This will:
 1. Take the value of `CERTIFICATE` from the secret
-2. Write it to `./generated/cert.pem`
-3. Output `CERT_FILE_PATH=./generated/cert.pem` in the .env file
+2. Write it to `<output-directory>/cert.pem` (e.g., `generated/cert.pem`)
+3. Output `CERT_FILE_PATH=generated/cert.pem` in the .env file
+
+Relative paths in `output` are resolved against the output directory. Use absolute paths if you need to write files elsewhere.
 
 Transformations are applied in order as configured.
 
