@@ -190,7 +190,7 @@ sources:
 | `base64_encode` | Encode string to base64 | `key` or `value` | - |
 | `prefix` | Add prefix to string | `key` or `value` | `value` |
 | `suffix` | Add suffix to string | `key` or `value` | `value` |
-| `absolute_path` | Convert relative path to absolute path | `key` or `value` | - |
+| `absolute_path` | Convert relative path to absolute path | `value` only | - |
 | `file` | Write value to file, replace with file path | `value` only | `output`, `key` |
 
 #### Transformation Fields
