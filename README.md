@@ -123,7 +123,7 @@ sources:
 
 ### Variable Exclusion
 
-You can exclude specific environment variables from a source:
+You can exclude specific environment variables from a source using exact names or regex patterns:
 
 ```yaml
 sources:
@@ -131,23 +131,26 @@ sources:
     name: my-config
     variables:
       exclude:
-        - DEBUG
-        - INTERNAL_KEY
+        - DEBUG           # exact match
+        - INTERNAL_KEY    # exact match
+        - ^TEMP_.*        # regex: exclude all vars starting with TEMP_
 
   - type: Secret
     name: app-secrets
     variables:
       exclude:
         - TEMP_TOKEN
+        - .*_SECRET$      # regex: exclude all vars ending with _SECRET
 
   - type: EnvFile
     path: ./local.env
     variables:
       exclude:
         - LOCAL_ONLY_VAR
+        - ^(DEBUG|TRACE)_ # regex: exclude DEBUG_* and TRACE_* vars
 ```
 
-Variables listed in `exclude` will be filtered out and not included in the generated `.env` file.
+Patterns in `exclude` are first matched exactly, then as regex patterns. Variables matching any pattern will be filtered out and not included in the generated `.env` file.
 
 ### Transformations
 

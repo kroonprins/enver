@@ -1,6 +1,10 @@
 package sources
 
-import "k8s.io/client-go/kubernetes"
+import (
+	"regexp"
+
+	"k8s.io/client-go/kubernetes"
+)
 
 // EnvEntry represents a single environment variable with its source metadata
 type EnvEntry struct {
@@ -51,10 +55,18 @@ type Source struct {
 }
 
 // ShouldExcludeVariable returns true if the variable should be excluded
+// Supports exact matches and regex patterns
 func (s *Source) ShouldExcludeVariable(varName string) bool {
-	for _, excluded := range s.Variables.Exclude {
-		if excluded == varName {
+	for _, pattern := range s.Variables.Exclude {
+		// First try exact match
+		if pattern == varName {
 			return true
+		}
+		// Then try regex match
+		if re, err := regexp.Compile(pattern); err == nil {
+			if re.MatchString(varName) {
+				return true
+			}
 		}
 	}
 	return false
