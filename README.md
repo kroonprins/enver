@@ -330,15 +330,16 @@ enver execute
 
 ## Output Format
 
-The generated `.env` file includes comments showing the source of each variable:
+The generated `.env` file includes comments showing the source, with variables grouped by source:
 
 ```bash
 # ConfigMap default/my-app-config
 DATABASE_HOST=localhost
-# ConfigMap default/my-app-config
 DATABASE_PORT=5432
+
 # Secret production/my-app-secrets
 DATABASE_PASSWORD=secret123
+
 # EnvFile ./local.env
 DEBUG=true
 ```

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"enver/gitutil"
 	"enver/sources"
@@ -162,13 +163,21 @@ var generateCmd = &cobra.Command{
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 
-		// Write to output file with comments
-		output := ""
+		// Write to output file with comments (one comment per source)
+		var sb strings.Builder
+		var lastSource string
 		for _, entry := range envData {
-			output += fmt.Sprintf("# %s %s/%s\n", entry.SourceType, entry.Namespace, entry.Name)
-			output += fmt.Sprintf("%s=%s\n", entry.Key, entry.Value)
+			currentSource := fmt.Sprintf("%s %s/%s", entry.SourceType, entry.Namespace, entry.Name)
+			if currentSource != lastSource {
+				if lastSource != "" {
+					sb.WriteString("\n")
+				}
+				fmt.Fprintf(&sb, "# %s\n", currentSource)
+				lastSource = currentSource
+			}
+			fmt.Fprintf(&sb, "%s=%s\n", entry.Key, entry.Value)
 		}
-		if err := os.WriteFile(outputPath, []byte(output), 0644); err != nil {
+		if err := os.WriteFile(outputPath, []byte(sb.String()), 0644); err != nil {
 			return fmt.Errorf("failed to write output file: %w", err)
 		}
 

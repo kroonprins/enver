@@ -205,11 +205,19 @@ var executeCmd = &cobra.Command{
 				return fmt.Errorf("failed to create output directory: %w", err)
 			}
 
-			// Write to output file with comments
+			// Write to output file with comments (one comment per source)
 			var sb strings.Builder
+			var lastSource string
 			for _, entry := range envData {
-				sb.WriteString(fmt.Sprintf("# %s %s/%s\n", entry.SourceType, entry.Namespace, entry.Name))
-				sb.WriteString(fmt.Sprintf("%s=%s\n", entry.Key, entry.Value))
+				currentSource := fmt.Sprintf("%s %s/%s", entry.SourceType, entry.Namespace, entry.Name)
+				if currentSource != lastSource {
+					if lastSource != "" {
+						sb.WriteString("\n")
+					}
+					fmt.Fprintf(&sb, "# %s\n", currentSource)
+					lastSource = currentSource
+				}
+				fmt.Fprintf(&sb, "%s=%s\n", entry.Key, entry.Value)
 			}
 			if err := os.WriteFile(execution.Output, []byte(sb.String()), 0644); err != nil {
 				return fmt.Errorf("failed to write output file: %w", err)
