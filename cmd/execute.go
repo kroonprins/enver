@@ -201,11 +201,21 @@ var executeCmd = &cobra.Command{
 				envData = append(envData, entries...)
 			}
 
+			// Apply defaults for output
+			outputName := execution.Output.Name
+			if outputName == "" {
+				outputName = ".env"
+			}
+			outputDirectory := execution.Output.Directory
+			if outputDirectory == "" {
+				outputDirectory = "generated"
+			}
+
 			// Build output path from directory and name
-			outputPath := filepath.Join(execution.Output.Directory, execution.Output.Name)
+			outputPath := filepath.Join(outputDirectory, outputName)
 
 			// Create output directory if it doesn't exist
-			if err := os.MkdirAll(execution.Output.Directory, 0755); err != nil {
+			if err := os.MkdirAll(outputDirectory, 0755); err != nil {
 				return fmt.Errorf("failed to create output directory: %w", err)
 			}
 
