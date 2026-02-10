@@ -281,13 +281,13 @@ executions:
 
 #### Execution Fields
 
-| Field | Description |
-|-------|-------------|
-| `name` | Identifier for the execution (displayed during execution) |
-| `output.name` | File name for the generated .env file |
-| `output.directory` | Directory for the generated .env file |
-| `contexts` | List of contexts to filter sources |
-| `kube-context` | Kubernetes context to use (required if execution uses ConfigMap or Secret sources) |
+| Field | Default | Description |
+|-------|---------|-------------|
+| `name` | | Identifier for the execution (displayed during execution) |
+| `output.name` | `.env` | File name for the generated .env file |
+| `output.directory` | `generated` | Directory for the generated .env file |
+| `contexts` | | List of contexts to filter sources |
+| `kube-context` | | Kubernetes context to use (required if execution uses ConfigMap or Secret sources) |
 
 ## Examples
 
