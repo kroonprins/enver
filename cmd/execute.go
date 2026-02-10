@@ -16,11 +16,16 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+type ExecutionOutput struct {
+	Name      string `yaml:"name"`
+	Directory string `yaml:"directory"`
+}
+
 type Execution struct {
-	Name        string   `yaml:"name"`
-	Output      string   `yaml:"output"`
-	Contexts    []string `yaml:"contexts"`
-	KubeContext string   `yaml:"kube-context"`
+	Name        string          `yaml:"name"`
+	Output      ExecutionOutput `yaml:"output"`
+	Contexts    []string        `yaml:"contexts"`
+	KubeContext string          `yaml:"kube-context"`
 }
 
 type ExecuteConfig struct {
@@ -196,9 +201,11 @@ var executeCmd = &cobra.Command{
 				envData = append(envData, entries...)
 			}
 
+			// Build output path from directory and name
+			outputPath := filepath.Join(execution.Output.Directory, execution.Output.Name)
+
 			// Create output directory if it doesn't exist
-			outputDir := filepath.Dir(execution.Output)
-			if err := os.MkdirAll(outputDir, 0755); err != nil {
+			if err := os.MkdirAll(execution.Output.Directory, 0755); err != nil {
 				return fmt.Errorf("failed to create output directory: %w", err)
 			}
 
@@ -216,14 +223,14 @@ var executeCmd = &cobra.Command{
 				}
 				fmt.Fprintf(&sb, "%s=%s\n", entry.Key, entry.Value)
 			}
-			if err := os.WriteFile(execution.Output, []byte(sb.String()), 0644); err != nil {
+			if err := os.WriteFile(outputPath, []byte(sb.String()), 0644); err != nil {
 				return fmt.Errorf("failed to write output file: %w", err)
 			}
 
-			fmt.Printf("  Wrote %d environment variables to %s\n", len(envData), execution.Output)
+			fmt.Printf("  Wrote %d environment variables to %s\n", len(envData), outputPath)
 
 			// Check if output file should be added to .gitignore
-			if err := gitutil.EnsureGitignored(execution.Output); err != nil {
+			if err := gitutil.EnsureGitignored(outputPath); err != nil {
 				return err
 			}
 		}

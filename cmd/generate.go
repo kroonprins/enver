@@ -23,7 +23,8 @@ type Config struct {
 }
 
 var kubeContext string
-var outputPath string
+var outputName string
+var outputDirectory string
 var contextFlags []string
 
 var generateCmd = &cobra.Command{
@@ -157,9 +158,11 @@ var generateCmd = &cobra.Command{
 			envData = append(envData, entries...)
 		}
 
+		// Build output path from directory and name
+		outputPath := filepath.Join(outputDirectory, outputName)
+
 		// Create output directory if it doesn't exist
-		outputDir := filepath.Dir(outputPath)
-		if err := os.MkdirAll(outputDir, 0755); err != nil {
+		if err := os.MkdirAll(outputDirectory, 0755); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 
@@ -193,7 +196,8 @@ var generateCmd = &cobra.Command{
 
 func init() {
 	generateCmd.Flags().StringVar(&kubeContext, "kube-context", "", "kubectl context to use (prompts if needed and not provided)")
-	generateCmd.Flags().StringVarP(&outputPath, "output", "o", "generated/.env", "output file path for the .env file")
+	generateCmd.Flags().StringVar(&outputName, "output-name", ".env", "output file name")
+	generateCmd.Flags().StringVar(&outputDirectory, "output-directory", "generated", "output directory for the .env file")
 	generateCmd.Flags().StringArrayVarP(&contextFlags, "context", "c", []string{}, "context for filtering sources (can be repeated, prompts if not provided and contexts are defined)")
 	rootCmd.AddCommand(generateCmd)
 }

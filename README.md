@@ -24,7 +24,8 @@ enver generate [flags]
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--output` | `-o` | `generated/.env` | Output file path for the .env file |
+| `--output-name` | | `.env` | Output file name |
+| `--output-directory` | | `generated` | Output directory for the .env file |
 | `--context` | `-c` | | Context for filtering sources (can be repeated) |
 | `--kube-context` | | | Kubernetes context to use |
 
@@ -255,18 +256,24 @@ sources:
 
 executions:
   - name: local
-    output: ./generated/local.env
+    output:
+      name: local.env
+      directory: ./generated
     contexts:
       - local
 
   - name: development
-    output: ./generated/dev.env
+    output:
+      name: dev.env
+      directory: ./generated
     kube-context: dev-cluster
     contexts:
       - development
 
   - name: production
-    output: ./generated/prod.env
+    output:
+      name: prod.env
+      directory: ./generated
     kube-context: prod-cluster
     contexts:
       - production
@@ -277,7 +284,8 @@ executions:
 | Field | Description |
 |-------|-------------|
 | `name` | Identifier for the execution (displayed during execution) |
-| `output` | Path for the generated .env file |
+| `output.name` | File name for the generated .env file |
+| `output.directory` | Directory for the generated .env file |
 | `contexts` | List of contexts to filter sources |
 | `kube-context` | Kubernetes context to use (required if execution uses ConfigMap or Secret sources) |
 
@@ -291,11 +299,12 @@ Generate a `.env` file with interactive prompts:
 enver generate
 ```
 
-### Specify output file
+### Specify output location
 
 ```bash
-enver generate -o .env
-enver generate --output ./config/.env
+enver generate --output-name .env.local
+enver generate --output-directory ./config
+enver generate --output-name prod.env --output-directory ./config
 ```
 
 ### Specify contexts
@@ -317,7 +326,7 @@ enver generate --kube-context kind-kind
 ### Full example
 
 ```bash
-enver generate -c production --kube-context prod-cluster -o .env.production
+enver generate -c production --kube-context prod-cluster --output-name .env.production --output-directory .
 ```
 
 ### Execute predefined tasks
