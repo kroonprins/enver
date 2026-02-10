@@ -107,12 +107,8 @@ var executeCmd = &cobra.Command{
 			}
 		}
 
-		// Build kubeconfig path
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("failed to get home directory: %w", err)
-		}
-		kubeconfigPath := filepath.Join(homeDir, ".kube", "config")
+		// Use default loading rules (respects KUBECONFIG env var)
+		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 
 		// Map of source types to their fetchers
 		fetchers := map[string]sources.Fetcher{
@@ -154,7 +150,7 @@ var executeCmd = &cobra.Command{
 				} else {
 					// Load kubeconfig with the selected context
 					restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-						&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
+						loadingRules,
 						&clientcmd.ConfigOverrides{CurrentContext: selectedKubeContext},
 					).ClientConfig()
 					if err != nil {

@@ -72,12 +72,8 @@ var generateCmd = &cobra.Command{
 			}
 		}
 
-		// Build kubeconfig path
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("failed to get home directory: %w", err)
-		}
-		kubeconfigPath := filepath.Join(homeDir, ".kube", "config")
+		// Use default loading rules (respects KUBECONFIG env var)
+		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 
 		var clientset *kubernetes.Clientset
 
@@ -86,7 +82,10 @@ var generateCmd = &cobra.Command{
 			selectedKubeContext := kubeContext
 			if selectedKubeContext == "" {
 				// Load kubeconfig to get available contexts
-				kubeConfig, err := clientcmd.LoadFromFile(kubeconfigPath)
+				kubeConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+					loadingRules,
+					&clientcmd.ConfigOverrides{},
+				).RawConfig()
 				if err != nil {
 					return fmt.Errorf("failed to load kubeconfig: %w", err)
 				}
@@ -114,7 +113,7 @@ var generateCmd = &cobra.Command{
 
 			// Load kubeconfig with the selected context
 			restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-				&clientcmd.ClientConfigLoadingRules{ExplicitPath: kubeconfigPath},
+				loadingRules,
 				&clientcmd.ConfigOverrides{CurrentContext: selectedKubeContext},
 			).ClientConfig()
 			if err != nil {
