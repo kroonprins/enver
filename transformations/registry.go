@@ -1,15 +1,19 @@
 package transformations
 
-import "fmt"
+import (
+	"fmt"
+	"path/filepath"
+)
 
 // Config represents a transformation configuration from YAML
 type Config struct {
-	Type      string
-	Target    string
-	Value     string
-	Variables []string
-	Output    string
-	Key       string
+	Type          string
+	Target        string
+	Value         string
+	Variables     []string
+	Output        string
+	Key           string
+	BaseDirectory string // base directory for relative paths in file transformation
 }
 
 // BuildTransformation creates a Transformation from a config
@@ -62,7 +66,12 @@ func ApplyTransformations(key, value string, configs []Config) (string, string, 
 			if cfg.Target != "" && cfg.Target != "value" {
 				return key, value, fmt.Errorf("file transformation can only be applied to values")
 			}
-			ft := &FileTransformation{Output: cfg.Output, Key: cfg.Key}
+			// Resolve relative paths against base directory
+			outputPath := cfg.Output
+			if !filepath.IsAbs(outputPath) && cfg.BaseDirectory != "" {
+				outputPath = filepath.Join(cfg.BaseDirectory, outputPath)
+			}
+			ft := &FileTransformation{Output: outputPath, Key: cfg.Key}
 			newKey, newValue, err := ft.TransformKeyValue(key, value)
 			if err != nil {
 				return key, value, err

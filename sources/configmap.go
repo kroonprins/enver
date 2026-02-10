@@ -12,7 +12,7 @@ import (
 
 type ConfigMapFetcher struct{}
 
-func (f *ConfigMapFetcher) Fetch(clientset *kubernetes.Clientset, source Source) ([]EnvEntry, error) {
+func (f *ConfigMapFetcher) Fetch(clientset *kubernetes.Clientset, source Source, outputDirectory string) ([]EnvEntry, error) {
 	namespace := source.GetNamespace()
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), source.Name, metav1.GetOptions{})
 	if err != nil {
@@ -23,12 +23,13 @@ func (f *ConfigMapFetcher) Fetch(clientset *kubernetes.Clientset, source Source)
 	var transformConfigs []transformations.Config
 	for _, tc := range source.Transformations {
 		transformConfigs = append(transformConfigs, transformations.Config{
-			Type:      tc.Type,
-			Target:    tc.Target,
-			Value:     tc.Value,
-			Variables: tc.Variables,
-			Output:    tc.Output,
-			Key:       tc.Key,
+			Type:          tc.Type,
+			Target:        tc.Target,
+			Value:         tc.Value,
+			Variables:     tc.Variables,
+			Output:        tc.Output,
+			Key:           tc.Key,
+			BaseDirectory: outputDirectory,
 		})
 	}
 

@@ -150,7 +150,7 @@ var generateCmd = &cobra.Command{
 				return fmt.Errorf("unknown source type %q for %s/%s", source.Type, source.GetNamespace(), source.Name)
 			}
 
-			entries, err := fetcher.Fetch(clientset, source)
+			entries, err := fetcher.Fetch(clientset, source, outputDirectory)
 			if err != nil {
 				return err
 			}

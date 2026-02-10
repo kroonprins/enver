@@ -120,5 +120,5 @@ func (s *Source) GetNamespace() string {
 
 // Fetcher is the interface that all source types must implement
 type Fetcher interface {
-	Fetch(clientset *kubernetes.Clientset, source Source) ([]EnvEntry, error)
+	Fetch(clientset *kubernetes.Clientset, source Source, outputDirectory string) ([]EnvEntry, error)
 }

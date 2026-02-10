@@ -13,7 +13,7 @@ import (
 
 type EnvFileFetcher struct{}
 
-func (f *EnvFileFetcher) Fetch(clientset *kubernetes.Clientset, source Source) ([]EnvEntry, error) {
+func (f *EnvFileFetcher) Fetch(clientset *kubernetes.Clientset, source Source, outputDirectory string) ([]EnvEntry, error) {
 	if source.Path == "" {
 		return nil, fmt.Errorf("path is required for EnvFile source %q", source.Name)
 	}
@@ -28,12 +28,13 @@ func (f *EnvFileFetcher) Fetch(clientset *kubernetes.Clientset, source Source) (
 	var transformConfigs []transformations.Config
 	for _, tc := range source.Transformations {
 		transformConfigs = append(transformConfigs, transformations.Config{
-			Type:      tc.Type,
-			Target:    tc.Target,
-			Value:     tc.Value,
-			Variables: tc.Variables,
-			Output:    tc.Output,
-			Key:       tc.Key,
+			Type:          tc.Type,
+			Target:        tc.Target,
+			Value:         tc.Value,
+			Variables:     tc.Variables,
+			Output:        tc.Output,
+			Key:           tc.Key,
+			BaseDirectory: outputDirectory,
 		})
 	}
 

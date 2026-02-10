@@ -174,6 +174,16 @@ var executeCmd = &cobra.Command{
 				}
 			}
 
+			// Apply defaults for output
+			outputName := execution.Output.Name
+			if outputName == "" {
+				outputName = ".env"
+			}
+			outputDirectory := execution.Output.Directory
+			if outputDirectory == "" {
+				outputDirectory = "generated"
+			}
+
 			// Collect all env vars with their source info
 			var envData []sources.EnvEntry
 
@@ -193,22 +203,12 @@ var executeCmd = &cobra.Command{
 					return fmt.Errorf("unknown source type %q for %s/%s", source.Type, source.GetNamespace(), source.Name)
 				}
 
-				entries, err := fetcher.Fetch(clientset, source)
+				entries, err := fetcher.Fetch(clientset, source, outputDirectory)
 				if err != nil {
 					return err
 				}
 
 				envData = append(envData, entries...)
-			}
-
-			// Apply defaults for output
-			outputName := execution.Output.Name
-			if outputName == "" {
-				outputName = ".env"
-			}
-			outputDirectory := execution.Output.Directory
-			if outputDirectory == "" {
-				outputDirectory = "generated"
 			}
 
 			// Build output path from directory and name
