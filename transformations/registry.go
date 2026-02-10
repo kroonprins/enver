@@ -86,6 +86,16 @@ func ApplyTransformations(key, value string, configs []Config) (string, string, 
 			continue
 		}
 
+		// Handle output_directory transformation specially since it needs base directory
+		if cfg.Type == "output_directory" {
+			if cfg.Target != "" && cfg.Target != "value" {
+				return key, value, fmt.Errorf("output_directory transformation can only be applied to values")
+			}
+			t := &OutputDirectory{Directory: cfg.BaseDirectory}
+			value = t.Transform(value)
+			continue
+		}
+
 		t, target, err := BuildTransformation(cfg)
 		if err != nil {
 			return key, value, err

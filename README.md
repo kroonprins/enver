@@ -191,6 +191,7 @@ sources:
 | `prefix` | Add prefix to string | `key` or `value` | `value` |
 | `suffix` | Add suffix to string | `key` or `value` | `value` |
 | `absolute_path` | Convert relative path to absolute path | `value` only | - |
+| `output_directory` | Set value to the output directory | `value` only | - |
 | `file` | Write value to file, replace with file path | `value` only | `output`, `key` |
 
 #### Transformation Fields
