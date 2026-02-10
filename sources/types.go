@@ -22,6 +22,12 @@ type SourceVariables struct {
 	Exclude []string `yaml:"exclude"`
 }
 
+// VarEntry defines a single variable for the Vars source type
+type VarEntry struct {
+	Name  string `yaml:"name"`
+	Value string `yaml:"value"`
+}
+
 // TransformationConfig defines a transformation to apply to variables
 type TransformationConfig struct {
 	Type      string   `yaml:"type"`      // base64_decode, base64_encode, prefix, suffix, file
@@ -41,6 +47,7 @@ type Source struct {
 	Contexts        SourceContexts         `yaml:"contexts"`
 	Variables       SourceVariables        `yaml:"variables"`
 	Transformations []TransformationConfig `yaml:"transformations"`
+	Vars            []VarEntry             `yaml:"vars"` // for Vars source type
 }
 
 // ShouldExcludeVariable returns true if the variable should be excluded

@@ -132,6 +132,7 @@ var generateCmd = &cobra.Command{
 			"ConfigMap": &sources.ConfigMapFetcher{},
 			"Secret":    &sources.SecretFetcher{},
 			"EnvFile":   &sources.EnvFileFetcher{},
+			"Vars":      &sources.VarsFetcher{},
 		}
 
 		// Collect all env vars with their source info

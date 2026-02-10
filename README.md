@@ -71,6 +71,15 @@ sources:
   # Read from a local .env file
   - type: EnvFile
     path: ./local.env  # supports absolute or relative paths
+
+  # Define variables inline
+  - type: Vars
+    name: inline-vars  # optional, used in output comments
+    vars:
+      - name: APP_ENV
+        value: production
+      - name: LOG_LEVEL
+        value: info
 ```
 
 ### Source Types
@@ -80,6 +89,7 @@ sources:
 | `ConfigMap` | Kubernetes ConfigMap | `name` |
 | `Secret` | Kubernetes Secret | `name` |
 | `EnvFile` | Local .env file | `path` |
+| `Vars` | Inline variables | `vars` |
 
 ### Context Filtering
 

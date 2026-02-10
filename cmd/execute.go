@@ -115,6 +115,7 @@ var executeCmd = &cobra.Command{
 			"ConfigMap": &sources.ConfigMapFetcher{},
 			"Secret":    &sources.SecretFetcher{},
 			"EnvFile":   &sources.EnvFileFetcher{},
+			"Vars":      &sources.VarsFetcher{},
 		}
 
 		// Cache for kubernetes clients by context
