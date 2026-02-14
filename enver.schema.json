@@ -36,7 +36,7 @@
         "type": {
           "type": "string",
           "description": "Type of source",
-          "enum": ["ConfigMap", "Secret", "EnvFile", "Vars", "Deployment"]
+          "enum": ["ConfigMap", "Secret", "EnvFile", "Vars", "Deployment", "StatefulSet", "DaemonSet"]
         },
         "name": {
           "type": "string",
@@ -122,6 +122,22 @@
         {
           "if": {
             "properties": { "type": { "const": "Deployment" } }
+          },
+          "then": {
+            "required": ["name"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "StatefulSet" } }
+          },
+          "then": {
+            "required": ["name"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "DaemonSet" } }
           },
           "then": {
             "required": ["name"]

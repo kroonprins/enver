@@ -68,7 +68,7 @@ var generateCmd = &cobra.Command{
 				continue
 			}
 			filteredSources = append(filteredSources, source)
-			if source.Type == "ConfigMap" || source.Type == "Secret" || source.Type == "Deployment" {
+			if source.Type == "ConfigMap" || source.Type == "Secret" || source.Type == "Deployment" || source.Type == "StatefulSet" || source.Type == "DaemonSet" {
 				needsKubernetes = true
 			}
 		}
@@ -130,11 +130,13 @@ var generateCmd = &cobra.Command{
 
 		// Map of source types to their fetchers
 		fetchers := map[string]sources.Fetcher{
-			"ConfigMap":  &sources.ConfigMapFetcher{},
-			"Secret":     &sources.SecretFetcher{},
-			"EnvFile":    &sources.EnvFileFetcher{},
-			"Vars":       &sources.VarsFetcher{},
-			"Deployment": &sources.DeploymentFetcher{},
+			"ConfigMap":   &sources.ConfigMapFetcher{},
+			"Secret":      &sources.SecretFetcher{},
+			"EnvFile":     &sources.EnvFileFetcher{},
+			"Vars":        &sources.VarsFetcher{},
+			"Deployment":  &sources.DeploymentFetcher{},
+			"StatefulSet": &sources.StatefulSetFetcher{},
+			"DaemonSet":   &sources.DaemonSetFetcher{},
 		}
 
 		// Collect all env vars with their source info

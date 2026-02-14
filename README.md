@@ -92,22 +92,24 @@ sources:
 | `EnvFile` | Local .env file | `path` |
 | `Vars` | Inline variables | `vars` |
 | `Deployment` | Kubernetes Deployment env vars | `name` |
+| `StatefulSet` | Kubernetes StatefulSet env vars | `name` |
+| `DaemonSet` | Kubernetes DaemonSet env vars | `name` |
 
-### Deployment Source
+### Deployment, StatefulSet, and DaemonSet Sources
 
-The `Deployment` source extracts environment variables from a Kubernetes Deployment's container specifications:
+The `Deployment`, `StatefulSet`, and `DaemonSet` sources extract environment variables from the respective Kubernetes workload's container specifications:
 
 ```yaml
 sources:
-  - type: Deployment
+  - type: Deployment      # or StatefulSet, DaemonSet
     name: my-app
-    namespace: default  # optional, defaults to "default"
-    containers:         # optional, defaults to all containers
+    namespace: default    # optional, defaults to "default"
+    containers:           # optional, defaults to all containers
       - app
       - sidecar
 ```
 
-It retrieves:
+All three source types retrieve:
 - `env` entries with direct `value`
 - `env` entries with `valueFrom` (ConfigMapKeyRef, SecretKeyRef)
 - `envFrom` entries with `configMapRef` (all keys from the ConfigMap)
