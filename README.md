@@ -112,6 +112,9 @@ It retrieves:
 - `env` entries with `valueFrom` (ConfigMapKeyRef, SecretKeyRef)
 - `envFrom` entries with `configMapRef` (all keys from the ConfigMap)
 - `envFrom` entries with `secretRef` (all keys from the Secret)
+- `volumeMounts` referencing ConfigMap or Secret volumes (including projected volumes)
+
+For volume mounts, the `file` transformation is automatically applied to write each key's content to a file at the mount path. The environment variable will contain the file path.
 
 **Note:** Field references (`fieldRef`) and resource field references (`resourceFieldRef`) are skipped as they require pod runtime context.
 

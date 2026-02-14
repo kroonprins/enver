@@ -3,6 +3,7 @@ package sources
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"enver/transformations"
@@ -111,6 +112,16 @@ func (f *DeploymentFetcher) Fetch(clientset *kubernetes.Clientset, source Source
 				})
 			}
 		}
+
+		// Process volumeMounts that reference ConfigMaps or Secrets
+		volumes := deployment.Spec.Template.Spec.Volumes
+		for _, volumeMount := range container.VolumeMounts {
+			volumeEntries, err := f.processVolumeMount(clientset, namespace, volumeMount, volumes, source, transformConfigs, outputDirectory)
+			if err != nil {
+				return nil, err
+			}
+			entries = append(entries, volumeEntries...)
+		}
 	}
 
 	return entries, nil
@@ -207,6 +218,315 @@ func (f *DeploymentFetcher) fetchFromSecret(clientset *kubernetes.Clientset, nam
 				Namespace:  namespace,
 			})
 		}
+	}
+
+	return entries, nil
+}
+
+func (f *DeploymentFetcher) processVolumeMount(clientset *kubernetes.Clientset, namespace string, volumeMount corev1.VolumeMount, volumes []corev1.Volume, source Source, transformConfigs []transformations.Config, outputDirectory string) ([]EnvEntry, error) {
+	// Find the volume that matches this volumeMount
+	var volume *corev1.Volume
+	for i := range volumes {
+		if volumes[i].Name == volumeMount.Name {
+			volume = &volumes[i]
+			break
+		}
+	}
+
+	if volume == nil {
+		return nil, nil
+	}
+
+	var entries []EnvEntry
+
+	// Handle ConfigMap volume
+	if volume.ConfigMap != nil {
+		cmEntries, err := f.processConfigMapVolume(clientset, namespace, volume.ConfigMap, volumeMount, source, transformConfigs, outputDirectory)
+		if err != nil {
+			if volume.ConfigMap.Optional != nil && *volume.ConfigMap.Optional {
+				return nil, nil
+			}
+			return nil, err
+		}
+		entries = append(entries, cmEntries...)
+	}
+
+	// Handle Secret volume
+	if volume.Secret != nil {
+		secretEntries, err := f.processSecretVolume(clientset, namespace, volume.Secret, volumeMount, source, transformConfigs, outputDirectory)
+		if err != nil {
+			if volume.Secret.Optional != nil && *volume.Secret.Optional {
+				return nil, nil
+			}
+			return nil, err
+		}
+		entries = append(entries, secretEntries...)
+	}
+
+	// Handle Projected volume
+	if volume.Projected != nil {
+		for _, projSource := range volume.Projected.Sources {
+			if projSource.ConfigMap != nil {
+				cmEntries, err := f.processProjectedConfigMap(clientset, namespace, projSource.ConfigMap, volumeMount, source, transformConfigs, outputDirectory)
+				if err != nil {
+					if projSource.ConfigMap.Optional != nil && *projSource.ConfigMap.Optional {
+						continue
+					}
+					return nil, err
+				}
+				entries = append(entries, cmEntries...)
+			}
+			if projSource.Secret != nil {
+				secretEntries, err := f.processProjectedSecret(clientset, namespace, projSource.Secret, volumeMount, source, transformConfigs, outputDirectory)
+				if err != nil {
+					if projSource.Secret.Optional != nil && *projSource.Secret.Optional {
+						continue
+					}
+					return nil, err
+				}
+				entries = append(entries, secretEntries...)
+			}
+		}
+	}
+
+	return entries, nil
+}
+
+func (f *DeploymentFetcher) processConfigMapVolume(clientset *kubernetes.Clientset, namespace string, cmVolume *corev1.ConfigMapVolumeSource, volumeMount corev1.VolumeMount, source Source, transformConfigs []transformations.Config, outputDirectory string) ([]EnvEntry, error) {
+	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), cmVolume.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get configmap %s/%s: %w", namespace, cmVolume.Name, err)
+	}
+
+	// Build key to path mapping from items if specified
+	keyToPath := make(map[string]string)
+	if len(cmVolume.Items) > 0 {
+		for _, item := range cmVolume.Items {
+			keyToPath[item.Key] = item.Path
+		}
+	}
+
+	var entries []EnvEntry
+	for key, value := range cm.Data {
+		// If items are specified, only process those keys
+		if len(cmVolume.Items) > 0 {
+			if _, ok := keyToPath[key]; !ok {
+				continue
+			}
+		}
+
+		if source.ShouldExcludeVariable(key) {
+			continue
+		}
+
+		// Determine the file path
+		filePath := key
+		if path, ok := keyToPath[key]; ok {
+			filePath = path
+		}
+		outputPath := filepath.Join(volumeMount.MountPath, filePath)
+
+		// Apply file transformation
+		fileTransformConfigs := append(transformConfigs, transformations.Config{
+			Type:          "file",
+			Output:        outputPath,
+			Key:           key,
+			BaseDirectory: outputDirectory,
+		})
+
+		transformedKey, transformedValue, err := transformations.ApplyTransformations(key, value, fileTransformConfigs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply transformation: %w", err)
+		}
+
+		entries = append(entries, EnvEntry{
+			Key:        transformedKey,
+			Value:      transformedValue,
+			SourceType: "Deployment",
+			Name:       fmt.Sprintf("%s (Volume: %s, ConfigMap: %s)", source.Name, volumeMount.Name, cmVolume.Name),
+			Namespace:  namespace,
+		})
+	}
+
+	return entries, nil
+}
+
+func (f *DeploymentFetcher) processSecretVolume(clientset *kubernetes.Clientset, namespace string, secretVolume *corev1.SecretVolumeSource, volumeMount corev1.VolumeMount, source Source, transformConfigs []transformations.Config, outputDirectory string) ([]EnvEntry, error) {
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(context.Background(), secretVolume.SecretName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret %s/%s: %w", namespace, secretVolume.SecretName, err)
+	}
+
+	// Build key to path mapping from items if specified
+	keyToPath := make(map[string]string)
+	if len(secretVolume.Items) > 0 {
+		for _, item := range secretVolume.Items {
+			keyToPath[item.Key] = item.Path
+		}
+	}
+
+	var entries []EnvEntry
+	for key, value := range secret.Data {
+		// If items are specified, only process those keys
+		if len(secretVolume.Items) > 0 {
+			if _, ok := keyToPath[key]; !ok {
+				continue
+			}
+		}
+
+		if source.ShouldExcludeVariable(key) {
+			continue
+		}
+
+		strValue := strings.TrimRight(string(value), "\n\r")
+
+		// Determine the file path
+		filePath := key
+		if path, ok := keyToPath[key]; ok {
+			filePath = path
+		}
+		outputPath := filepath.Join(volumeMount.MountPath, filePath)
+
+		// Apply file transformation
+		fileTransformConfigs := append(transformConfigs, transformations.Config{
+			Type:          "file",
+			Output:        outputPath,
+			Key:           key,
+			BaseDirectory: outputDirectory,
+		})
+
+		transformedKey, transformedValue, err := transformations.ApplyTransformations(key, strValue, fileTransformConfigs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply transformation: %w", err)
+		}
+
+		entries = append(entries, EnvEntry{
+			Key:        transformedKey,
+			Value:      transformedValue,
+			SourceType: "Deployment",
+			Name:       fmt.Sprintf("%s (Volume: %s, Secret: %s)", source.Name, volumeMount.Name, secretVolume.SecretName),
+			Namespace:  namespace,
+		})
+	}
+
+	return entries, nil
+}
+
+func (f *DeploymentFetcher) processProjectedConfigMap(clientset *kubernetes.Clientset, namespace string, cmProjection *corev1.ConfigMapProjection, volumeMount corev1.VolumeMount, source Source, transformConfigs []transformations.Config, outputDirectory string) ([]EnvEntry, error) {
+	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), cmProjection.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get configmap %s/%s: %w", namespace, cmProjection.Name, err)
+	}
+
+	// Build key to path mapping from items if specified
+	keyToPath := make(map[string]string)
+	if len(cmProjection.Items) > 0 {
+		for _, item := range cmProjection.Items {
+			keyToPath[item.Key] = item.Path
+		}
+	}
+
+	var entries []EnvEntry
+	for key, value := range cm.Data {
+		// If items are specified, only process those keys
+		if len(cmProjection.Items) > 0 {
+			if _, ok := keyToPath[key]; !ok {
+				continue
+			}
+		}
+
+		if source.ShouldExcludeVariable(key) {
+			continue
+		}
+
+		// Determine the file path
+		filePath := key
+		if path, ok := keyToPath[key]; ok {
+			filePath = path
+		}
+		outputPath := filepath.Join(volumeMount.MountPath, filePath)
+
+		// Apply file transformation
+		fileTransformConfigs := append(transformConfigs, transformations.Config{
+			Type:          "file",
+			Output:        outputPath,
+			Key:           key,
+			BaseDirectory: outputDirectory,
+		})
+
+		transformedKey, transformedValue, err := transformations.ApplyTransformations(key, value, fileTransformConfigs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply transformation: %w", err)
+		}
+
+		entries = append(entries, EnvEntry{
+			Key:        transformedKey,
+			Value:      transformedValue,
+			SourceType: "Deployment",
+			Name:       fmt.Sprintf("%s (Projected Volume: %s, ConfigMap: %s)", source.Name, volumeMount.Name, cmProjection.Name),
+			Namespace:  namespace,
+		})
+	}
+
+	return entries, nil
+}
+
+func (f *DeploymentFetcher) processProjectedSecret(clientset *kubernetes.Clientset, namespace string, secretProjection *corev1.SecretProjection, volumeMount corev1.VolumeMount, source Source, transformConfigs []transformations.Config, outputDirectory string) ([]EnvEntry, error) {
+	secret, err := clientset.CoreV1().Secrets(namespace).Get(context.Background(), secretProjection.Name, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get secret %s/%s: %w", namespace, secretProjection.Name, err)
+	}
+
+	// Build key to path mapping from items if specified
+	keyToPath := make(map[string]string)
+	if len(secretProjection.Items) > 0 {
+		for _, item := range secretProjection.Items {
+			keyToPath[item.Key] = item.Path
+		}
+	}
+
+	var entries []EnvEntry
+	for key, value := range secret.Data {
+		// If items are specified, only process those keys
+		if len(secretProjection.Items) > 0 {
+			if _, ok := keyToPath[key]; !ok {
+				continue
+			}
+		}
+
+		if source.ShouldExcludeVariable(key) {
+			continue
+		}
+
+		strValue := strings.TrimRight(string(value), "\n\r")
+
+		// Determine the file path
+		filePath := key
+		if path, ok := keyToPath[key]; ok {
+			filePath = path
+		}
+		outputPath := filepath.Join(volumeMount.MountPath, filePath)
+
+		// Apply file transformation
+		fileTransformConfigs := append(transformConfigs, transformations.Config{
+			Type:          "file",
+			Output:        outputPath,
+			Key:           key,
+			BaseDirectory: outputDirectory,
+		})
+
+		transformedKey, transformedValue, err := transformations.ApplyTransformations(key, strValue, fileTransformConfigs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply transformation: %w", err)
+		}
+
+		entries = append(entries, EnvEntry{
+			Key:        transformedKey,
+			Value:      transformedValue,
+			SourceType: "Deployment",
+			Name:       fmt.Sprintf("%s (Projected Volume: %s, Secret: %s)", source.Name, volumeMount.Name, secretProjection.Name),
+			Namespace:  namespace,
+		})
 	}
 
 	return entries, nil
