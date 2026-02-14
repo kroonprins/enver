@@ -51,7 +51,8 @@ type Source struct {
 	Contexts        SourceContexts         `yaml:"contexts"`
 	Variables       SourceVariables        `yaml:"variables"`
 	Transformations []TransformationConfig `yaml:"transformations"`
-	Vars            []VarEntry             `yaml:"vars"` // for Vars source type
+	Vars            []VarEntry             `yaml:"vars"`       // for Vars source type
+	Containers      []string               `yaml:"containers"` // for Deployment source type
 }
 
 // ShouldExcludeVariable returns true if the variable should be excluded

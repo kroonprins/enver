@@ -36,7 +36,7 @@
         "type": {
           "type": "string",
           "description": "Type of source",
-          "enum": ["ConfigMap", "Secret", "EnvFile", "Vars"]
+          "enum": ["ConfigMap", "Secret", "EnvFile", "Vars", "Deployment"]
         },
         "name": {
           "type": "string",
@@ -56,6 +56,13 @@
           "description": "List of inline variables (for Vars type)",
           "items": {
             "$ref": "#/$defs/varEntry"
+          }
+        },
+        "containers": {
+          "type": "array",
+          "description": "List of container names to include (for Deployment type, empty = all containers)",
+          "items": {
+            "type": "string"
           }
         },
         "contexts": {
@@ -103,6 +110,14 @@
           },
           "then": {
             "required": ["vars"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "Deployment" } }
+          },
+          "then": {
+            "required": ["name"]
           }
         }
       ]

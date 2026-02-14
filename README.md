@@ -91,6 +91,29 @@ sources:
 | `Secret` | Kubernetes Secret | `name` |
 | `EnvFile` | Local .env file | `path` |
 | `Vars` | Inline variables | `vars` |
+| `Deployment` | Kubernetes Deployment env vars | `name` |
+
+### Deployment Source
+
+The `Deployment` source extracts environment variables from a Kubernetes Deployment's container specifications:
+
+```yaml
+sources:
+  - type: Deployment
+    name: my-app
+    namespace: default  # optional, defaults to "default"
+    containers:         # optional, defaults to all containers
+      - app
+      - sidecar
+```
+
+It retrieves:
+- `env` entries with direct `value`
+- `env` entries with `valueFrom` (ConfigMapKeyRef, SecretKeyRef)
+- `envFrom` entries with `configMapRef` (all keys from the ConfigMap)
+- `envFrom` entries with `secretRef` (all keys from the Secret)
+
+**Note:** Field references (`fieldRef`) and resource field references (`resourceFieldRef`) are skipped as they require pod runtime context.
 
 ### Context Filtering
 

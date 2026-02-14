@@ -117,10 +117,11 @@ var executeCmd = &cobra.Command{
 
 		// Map of source types to their fetchers
 		fetchers := map[string]sources.Fetcher{
-			"ConfigMap": &sources.ConfigMapFetcher{},
-			"Secret":    &sources.SecretFetcher{},
-			"EnvFile":   &sources.EnvFileFetcher{},
-			"Vars":      &sources.VarsFetcher{},
+			"ConfigMap":  &sources.ConfigMapFetcher{},
+			"Secret":     &sources.SecretFetcher{},
+			"EnvFile":    &sources.EnvFileFetcher{},
+			"Vars":       &sources.VarsFetcher{},
+			"Deployment": &sources.DeploymentFetcher{},
 		}
 
 		// Cache for kubernetes clients by context
@@ -136,7 +137,7 @@ var executeCmd = &cobra.Command{
 				if !source.ShouldInclude(execution.Contexts) {
 					continue
 				}
-				if source.Type == "ConfigMap" || source.Type == "Secret" {
+				if source.Type == "ConfigMap" || source.Type == "Secret" || source.Type == "Deployment" {
 					executionNeedsKubernetes = true
 					break
 				}
