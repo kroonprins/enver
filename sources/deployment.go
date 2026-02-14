@@ -326,11 +326,14 @@ func (f *DeploymentFetcher) processConfigMapVolume(clientset *kubernetes.Clients
 		}
 		outputPath := filepath.Join(volumeMount.Name, filePath)
 
+		// Get mapped key for the environment variable
+		mappedKey := source.GetVolumeMountKeyMapping("ConfigMap", cmVolume.Name, key)
+
 		// Apply file transformation
 		fileTransformConfigs := append(transformConfigs, transformations.Config{
 			Type:          "file",
 			Output:        outputPath,
-			Key:           key,
+			Key:           mappedKey,
 			BaseDirectory: outputDirectory,
 		})
 
@@ -387,11 +390,14 @@ func (f *DeploymentFetcher) processSecretVolume(clientset *kubernetes.Clientset,
 		}
 		outputPath := filepath.Join(volumeMount.Name, filePath)
 
+		// Get mapped key for the environment variable
+		mappedKey := source.GetVolumeMountKeyMapping("Secret", secretVolume.SecretName, key)
+
 		// Apply file transformation
 		fileTransformConfigs := append(transformConfigs, transformations.Config{
 			Type:          "file",
 			Output:        outputPath,
-			Key:           key,
+			Key:           mappedKey,
 			BaseDirectory: outputDirectory,
 		})
 
@@ -446,11 +452,14 @@ func (f *DeploymentFetcher) processProjectedConfigMap(clientset *kubernetes.Clie
 		}
 		outputPath := filepath.Join(volumeMount.Name, filePath)
 
+		// Get mapped key for the environment variable
+		mappedKey := source.GetVolumeMountKeyMapping("ConfigMap", cmProjection.Name, key)
+
 		// Apply file transformation
 		fileTransformConfigs := append(transformConfigs, transformations.Config{
 			Type:          "file",
 			Output:        outputPath,
-			Key:           key,
+			Key:           mappedKey,
 			BaseDirectory: outputDirectory,
 		})
 
@@ -507,11 +516,14 @@ func (f *DeploymentFetcher) processProjectedSecret(clientset *kubernetes.Clients
 		}
 		outputPath := filepath.Join(volumeMount.Name, filePath)
 
+		// Get mapped key for the environment variable
+		mappedKey := source.GetVolumeMountKeyMapping("Secret", secretProjection.Name, key)
+
 		// Apply file transformation
 		fileTransformConfigs := append(transformConfigs, transformations.Config{
 			Type:          "file",
 			Output:        outputPath,
-			Key:           key,
+			Key:           mappedKey,
 			BaseDirectory: outputDirectory,
 		})
 

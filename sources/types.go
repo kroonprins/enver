@@ -32,6 +32,13 @@ type VarEntry struct {
 	Value string `yaml:"value"`
 }
 
+// VolumeMountKeyMapping defines key mappings for volume mounts in Deployment source
+type VolumeMountKeyMapping struct {
+	Kind     string            `yaml:"kind"`     // ConfigMap or Secret
+	Name     string            `yaml:"name"`     // name of the ConfigMap/Secret
+	Mappings map[string]string `yaml:"mappings"` // original key -> new key
+}
+
 // TransformationConfig defines a transformation to apply to variables
 type TransformationConfig struct {
 	Type      string   `yaml:"type"`      // base64_decode, base64_encode, prefix, suffix, file
@@ -44,15 +51,16 @@ type TransformationConfig struct {
 
 // Source represents a source configuration from .enver.yaml
 type Source struct {
-	Name            string                 `yaml:"name"`
-	Namespace       string                 `yaml:"namespace"`
-	Type            string                 `yaml:"type"`
-	Path            string                 `yaml:"path"`
-	Contexts        SourceContexts         `yaml:"contexts"`
-	Variables       SourceVariables        `yaml:"variables"`
-	Transformations []TransformationConfig `yaml:"transformations"`
-	Vars            []VarEntry             `yaml:"vars"`       // for Vars source type
-	Containers      []string               `yaml:"containers"` // for Deployment source type
+	Name                   string                  `yaml:"name"`
+	Namespace              string                  `yaml:"namespace"`
+	Type                   string                  `yaml:"type"`
+	Path                   string                  `yaml:"path"`
+	Contexts               SourceContexts          `yaml:"contexts"`
+	Variables              SourceVariables         `yaml:"variables"`
+	Transformations        []TransformationConfig  `yaml:"transformations"`
+	Vars                   []VarEntry              `yaml:"vars"`                   // for Vars source type
+	Containers             []string                `yaml:"containers"`             // for Deployment source type
+	VolumeMountKeyMappings []VolumeMountKeyMapping `yaml:"volumeMountKeyMappings"` // for Deployment source type
 }
 
 // ShouldExcludeVariable returns true if the variable should be excluded
@@ -117,6 +125,18 @@ func (s *Source) GetNamespace() string {
 		return "default"
 	}
 	return s.Namespace
+}
+
+// GetVolumeMountKeyMapping returns the mapped key for a volume mount, or the original key if no mapping exists
+func (s *Source) GetVolumeMountKeyMapping(kind, name, key string) string {
+	for _, mapping := range s.VolumeMountKeyMappings {
+		if mapping.Kind == kind && mapping.Name == name {
+			if newKey, ok := mapping.Mappings[key]; ok {
+				return newKey
+			}
+		}
+	}
+	return key
 }
 
 // Fetcher is the interface that all source types must implement

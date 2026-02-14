@@ -65,6 +65,13 @@
             "type": "string"
           }
         },
+        "volumeMountKeyMappings": {
+          "type": "array",
+          "description": "Key mappings for volume mounts (for Deployment type)",
+          "items": {
+            "$ref": "#/$defs/volumeMountKeyMapping"
+          }
+        },
         "contexts": {
           "$ref": "#/$defs/sourceContexts"
         },
@@ -300,6 +307,29 @@
           "type": "string",
           "description": "Output directory",
           "default": "generated"
+        }
+      }
+    },
+    "volumeMountKeyMapping": {
+      "type": "object",
+      "description": "Key mapping for a volume mount ConfigMap or Secret",
+      "required": ["kind", "name", "mappings"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Type of volume source",
+          "enum": ["ConfigMap", "Secret"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the ConfigMap or Secret"
+        },
+        "mappings": {
+          "type": "object",
+          "description": "Map of original key names to new environment variable names",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     }

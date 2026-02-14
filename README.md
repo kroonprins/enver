@@ -116,6 +116,29 @@ It retrieves:
 
 For volume mounts, the `file` transformation is automatically applied to write each key's content to a file at the mount path. The environment variable will contain the file path.
 
+#### Volume Mount Key Mappings
+
+By default, volume mount keys from ConfigMaps and Secrets are used as the environment variable names. You can customize this with `volumeMountKeyMappings`:
+
+```yaml
+sources:
+  - type: Deployment
+    name: my-app
+    volumeMountKeyMappings:
+      - kind: ConfigMap
+        name: app-config
+        mappings:
+          config.yaml: APP_CONFIG_FILE
+          settings.json: APP_SETTINGS_FILE
+      - kind: Secret
+        name: app-certs
+        mappings:
+          tls.crt: TLS_CERT_PATH
+          tls.key: TLS_KEY_PATH
+```
+
+This maps the original key names from the ConfigMap/Secret to custom environment variable names.
+
 **Note:** Field references (`fieldRef`) and resource field references (`resourceFieldRef`) are skipped as they require pod runtime context.
 
 ### Context Filtering
