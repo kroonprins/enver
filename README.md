@@ -385,6 +385,56 @@ If a file is not gitignored, you'll be prompted with options:
 
 This helps prevent accidentally committing sensitive environment files or secrets to version control.
 
+## IDE Integration
+
+A JSON schema is provided for `.enver.yaml` validation and autocompletion.
+
+### VS Code
+
+Add the following to your `.vscode/settings.json`:
+
+```json
+{
+  "yaml.schemas": {
+    "./enver.schema.json": ".enver.yaml"
+  }
+}
+```
+
+Or for a global installation, use the raw GitHub URL:
+
+```json
+{
+  "yaml.schemas": {
+    "https://raw.githubusercontent.com/kroonprins/enver/main/enver.schema.json": ".enver.yaml"
+  }
+}
+```
+
+**Note:** Requires the [YAML extension](https://marketplace.visualstudio.com/items?itemName=redhat.vscode-yaml) by Red Hat.
+
+### IntelliJ IDEA
+
+1. Open **Settings/Preferences** > **Languages & Frameworks** > **Schemas and DTDs** > **JSON Schema Mappings**
+2. Click **+** to add a new mapping
+3. Set **Name** to `enver`
+4. Set **Schema file or URL** to:
+   - Local: path to `enver.schema.json`
+   - Remote: `https://raw.githubusercontent.com/kroonprins/enver/main/enver.schema.json`
+5. Add a file pattern: `.enver.yaml`
+6. Click **OK**
+
+Alternatively, add a schema reference directly in your `.enver.yaml`:
+
+```yaml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/kroonprins/enver/main/enver.schema.json
+
+contexts:
+  - local
+  - production
+# ...
+```
+
 ## Interactive Prompts
 
 When flags are not provided:

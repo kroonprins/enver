@@ -1,0 +1,292 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/kroonprins/enver/enver.schema.json",
+  "title": "enver configuration",
+  "description": "Configuration schema for .enver.yaml",
+  "type": "object",
+  "properties": {
+    "contexts": {
+      "type": "array",
+      "description": "List of available contexts for filtering sources",
+      "items": {
+        "type": "string"
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "List of environment variable sources",
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "executions": {
+      "type": "array",
+      "description": "List of predefined execution tasks",
+      "items": {
+        "$ref": "#/$defs/execution"
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "description": "A source of environment variables",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of source",
+          "enum": ["ConfigMap", "Secret", "EnvFile", "Vars"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the ConfigMap, Secret, or identifier for other sources"
+        },
+        "namespace": {
+          "type": "string",
+          "description": "Kubernetes namespace (defaults to 'default')",
+          "default": "default"
+        },
+        "path": {
+          "type": "string",
+          "description": "Path to the env file (for EnvFile type)"
+        },
+        "vars": {
+          "type": "array",
+          "description": "List of inline variables (for Vars type)",
+          "items": {
+            "$ref": "#/$defs/varEntry"
+          }
+        },
+        "contexts": {
+          "$ref": "#/$defs/sourceContexts"
+        },
+        "variables": {
+          "$ref": "#/$defs/sourceVariables"
+        },
+        "transformations": {
+          "type": "array",
+          "description": "List of transformations to apply to variables",
+          "items": {
+            "$ref": "#/$defs/transformation"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "ConfigMap" } }
+          },
+          "then": {
+            "required": ["name"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "Secret" } }
+          },
+          "then": {
+            "required": ["name"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "EnvFile" } }
+          },
+          "then": {
+            "required": ["path"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "Vars" } }
+          },
+          "then": {
+            "required": ["vars"]
+          }
+        }
+      ]
+    },
+    "varEntry": {
+      "type": "object",
+      "description": "An inline variable definition",
+      "required": ["name", "value"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Variable name"
+        },
+        "value": {
+          "type": "string",
+          "description": "Variable value"
+        }
+      }
+    },
+    "sourceContexts": {
+      "type": "object",
+      "description": "Context-based filtering for a source",
+      "properties": {
+        "include": {
+          "type": "array",
+          "description": "Include source only when these contexts are selected",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exclude": {
+          "type": "array",
+          "description": "Exclude source when these contexts are selected",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sourceVariables": {
+      "type": "object",
+      "description": "Variable-level filtering for a source",
+      "properties": {
+        "exclude": {
+          "type": "array",
+          "description": "Variable names or regex patterns to exclude",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "transformation": {
+      "type": "object",
+      "description": "A transformation to apply to variables",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of transformation",
+          "enum": ["base64_decode", "base64_encode", "prefix", "suffix", "absolute_path", "output_directory", "file"]
+        },
+        "target": {
+          "type": "string",
+          "description": "What to transform: key or value",
+          "enum": ["key", "value"],
+          "default": "value"
+        },
+        "value": {
+          "type": "string",
+          "description": "Parameter for prefix/suffix transformations"
+        },
+        "variables": {
+          "type": "array",
+          "description": "Limit transformation to these variable names (empty = apply to all)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "output": {
+          "type": "string",
+          "description": "Output file path (for file transformation)"
+        },
+        "key": {
+          "type": "string",
+          "description": "New key name (for file transformation)"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "prefix" } }
+          },
+          "then": {
+            "required": ["value"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "suffix" } }
+          },
+          "then": {
+            "required": ["value"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "file" } }
+          },
+          "then": {
+            "required": ["output", "key"],
+            "properties": {
+              "target": {
+                "const": "value"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "absolute_path" } }
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "const": "value"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "output_directory" } }
+          },
+          "then": {
+            "properties": {
+              "target": {
+                "const": "value"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "execution": {
+      "type": "object",
+      "description": "A predefined execution task",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Identifier for the execution"
+        },
+        "output": {
+          "$ref": "#/$defs/executionOutput"
+        },
+        "contexts": {
+          "type": "array",
+          "description": "List of contexts to filter sources",
+          "items": {
+            "type": "string"
+          }
+        },
+        "kube-context": {
+          "type": "string",
+          "description": "Kubernetes context to use (required if using ConfigMap or Secret sources)"
+        }
+      }
+    },
+    "executionOutput": {
+      "type": "object",
+      "description": "Output configuration for an execution",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Output file name",
+          "default": ".env"
+        },
+        "directory": {
+          "type": "string",
+          "description": "Output directory",
+          "default": "generated"
+        }
+      }
+    }
+  }
+}
