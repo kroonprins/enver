@@ -51,7 +51,35 @@ func (f *DeploymentFetcher) Fetch(clientset *kubernetes.Clientset, source Source
 			continue
 		}
 
-		// Process env entries
+		// Process envFrom entries first (env entries take priority and come after)
+		for _, envFrom := range container.EnvFrom {
+			var envEntries []EnvEntry
+			var err error
+
+			if envFrom.ConfigMapRef != nil {
+				envEntries, err = f.fetchFromConfigMap(clientset, namespace, envFrom.ConfigMapRef.Name, envFrom.Prefix, source, transformConfigs)
+				if err != nil {
+					// Check if optional
+					if envFrom.ConfigMapRef.Optional != nil && *envFrom.ConfigMapRef.Optional {
+						continue
+					}
+					return nil, err
+				}
+			} else if envFrom.SecretRef != nil {
+				envEntries, err = f.fetchFromSecret(clientset, namespace, envFrom.SecretRef.Name, envFrom.Prefix, source, transformConfigs)
+				if err != nil {
+					// Check if optional
+					if envFrom.SecretRef.Optional != nil && *envFrom.SecretRef.Optional {
+						continue
+					}
+					return nil, err
+				}
+			}
+
+			entries = append(entries, envEntries...)
+		}
+
+		// Process env entries (these take priority over envFrom, so they come last)
 		for _, envVar := range container.Env {
 			key := envVar.Name
 			var value string
@@ -82,34 +110,6 @@ func (f *DeploymentFetcher) Fetch(clientset *kubernetes.Clientset, source Source
 					Namespace:  namespace,
 				})
 			}
-		}
-
-		// Process envFrom entries
-		for _, envFrom := range container.EnvFrom {
-			var envEntries []EnvEntry
-			var err error
-
-			if envFrom.ConfigMapRef != nil {
-				envEntries, err = f.fetchFromConfigMap(clientset, namespace, envFrom.ConfigMapRef.Name, envFrom.Prefix, source, transformConfigs)
-				if err != nil {
-					// Check if optional
-					if envFrom.ConfigMapRef.Optional != nil && *envFrom.ConfigMapRef.Optional {
-						continue
-					}
-					return nil, err
-				}
-			} else if envFrom.SecretRef != nil {
-				envEntries, err = f.fetchFromSecret(clientset, namespace, envFrom.SecretRef.Name, envFrom.Prefix, source, transformConfigs)
-				if err != nil {
-					// Check if optional
-					if envFrom.SecretRef.Optional != nil && *envFrom.SecretRef.Optional {
-						continue
-					}
-					return nil, err
-				}
-			}
-
-			entries = append(entries, envEntries...)
 		}
 	}
 
