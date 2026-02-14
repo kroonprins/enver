@@ -2,19 +2,17 @@
 
 > **Disclaimer:** This entire codebase was vibe coded with AI assistance. Use at your own risk. It probably works, but no guarantees were made and certainly none were kept.
 
-A CLI tool that generates `.env` files from Kubernetes ConfigMaps, Secrets, and local env files.
+A CLI tool to generate `.env` files from a kubernetes cluster, to use for development.
 
 ## Installation
 
-```bash
-go build -o enver
-```
+Download the version for your platform from the releases page.
 
 ## Commands
 
 ### generate
 
-Generate a single `.env` file interactively or with flags.
+Generate a single `.env` file interactively or with flags from configuration in the configuration file `.enver.yaml`.
 
 ```bash
 enver generate [flags]
@@ -89,11 +87,11 @@ sources:
 |------|-------------|-----------------|
 | `ConfigMap` | Kubernetes ConfigMap | `name` |
 | `Secret` | Kubernetes Secret | `name` |
-| `EnvFile` | Local .env file | `path` |
-| `Vars` | Inline variables | `vars` |
 | `Deployment` | Kubernetes Deployment env vars | `name` |
 | `StatefulSet` | Kubernetes StatefulSet env vars | `name` |
 | `DaemonSet` | Kubernetes DaemonSet env vars | `name` |
+| `EnvFile` | Local .env file | `path` |
+| `Vars` | Inline variables | `vars` |
 
 ### Deployment, StatefulSet, and DaemonSet Sources
 
@@ -442,17 +440,7 @@ A JSON schema is provided for `.enver.yaml` validation and autocompletion.
 
 ### VS Code
 
-Add the following to your `.vscode/settings.json`:
-
-```json
-{
-  "yaml.schemas": {
-    "./enver.schema.json": ".enver.yaml"
-  }
-}
-```
-
-Or for a global installation, use the raw GitHub URL:
+Add the following to your `.vscode/settings.json` or global settings:
 
 ```json
 {
