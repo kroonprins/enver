@@ -224,7 +224,12 @@ var executeCmd = &cobra.Command{
 			var sb strings.Builder
 			var lastSource string
 			for _, entry := range envData {
-				currentSource := fmt.Sprintf("%s %s/%s", entry.SourceType, entry.Namespace, entry.Name)
+				var currentSource string
+				if entry.Namespace != "" {
+					currentSource = fmt.Sprintf("%s %s/%s", entry.SourceType, entry.Namespace, entry.Name)
+				} else {
+					currentSource = fmt.Sprintf("%s %s", entry.SourceType, entry.Name)
+				}
 				if currentSource != lastSource {
 					if lastSource != "" {
 						sb.WriteString("\n")
