@@ -2,19 +2,31 @@ contexts:
   - int
   - acc
   - local-db
+  - test-deployment
 
 executions:
   - name: int
-    output: generated/int.env
+    output: 
+      name: int.env
+      directory: generated
     kube-context: kind-kind
     contexts:
       - int
   - name: int-local
-    output: generated/int-local.env
+    output: 
+      name: int-local.env
+      directory: generated
     kube-context: kind-kind
     contexts:
       - int
       - local-db
+  - name: deployment-test
+    output: 
+      name: deployment.env
+      directory: generated
+    kube-context: kind-kind
+    contexts:
+      - test-deployment
 
 sources:
   - type: ConfigMap
@@ -56,11 +68,36 @@ sources:
         - local-db
     variables:
       exclude:
-        - ANOTHER
+        - ^ANOT.*
+        - SOMETHING
     transformations:
       - type: file
         target: value
-        output: generated/file.txt
+        output: files/file.txt
         key: FILE
         variables:
           - FILE
+      - type: absolute_path
+        target: value
+        variables:
+          - FILE
+  - type: Vars
+    name: inline vars
+    vars:
+      - name: ONE
+        value: TWO
+      - name: THREE
+        value: FOUR
+  - type: Deployment
+    name: busybox-deployment
+    containers:
+      - busybox-1
+      - busybox-2
+    volumeMountKeyMappings:
+      - kind: ConfigMap
+        name: configmap-file
+        mappings:
+          file1.json: FILE1
+    contexts:
+      include:
+        - test-deployment

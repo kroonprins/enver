@@ -28,6 +28,20 @@ data:
   SECRET1: dmFsdWUtMg0KDQo=
 ---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: configmap-file
+data:
+  file1.json: |
+    {
+      "a": "b"
+    } 
+  file2.json: |
+    {
+      "c": "d"
+    }   
+---
+apiVersion: v1
 kind: Secret
 metadata:
   name: secret1-ns1
@@ -51,6 +65,10 @@ spec:
       labels:
         app: busybox
     spec:
+      volumes:
+        - name: configmap-mount
+          configMap:
+            name: configmap-file
       containers:
         - name: busybox-1
           image: busybox
@@ -60,6 +78,8 @@ spec:
               value: "1"
             - name: SECOND
               value: "2"
+            - name: KEY1
+              value: FROM_DEPLOYMENT
           envFrom:
             - configMapRef:
                 name: configmap1
@@ -68,3 +88,7 @@ spec:
         - name: busybox-2
           image: busybox
           command: ["sleep", "3600"]
+          volumeMounts:
+            - mountPath: /tmp
+              name: configmap-mount
+              readOnly: true
