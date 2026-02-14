@@ -98,6 +98,7 @@ sources:
         name: configmap-file
         mappings:
           file1.json: FILE1
+          file2.json: FILE2
     contexts:
       include:
         - test-deployment
