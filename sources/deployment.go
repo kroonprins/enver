@@ -324,7 +324,7 @@ func (f *DeploymentFetcher) processConfigMapVolume(clientset *kubernetes.Clients
 		if path, ok := keyToPath[key]; ok {
 			filePath = path
 		}
-		outputPath := filepath.Join(volumeMount.MountPath, filePath)
+		outputPath := filepath.Join(volumeMount.Name, filePath)
 
 		// Apply file transformation
 		fileTransformConfigs := append(transformConfigs, transformations.Config{
@@ -385,7 +385,7 @@ func (f *DeploymentFetcher) processSecretVolume(clientset *kubernetes.Clientset,
 		if path, ok := keyToPath[key]; ok {
 			filePath = path
 		}
-		outputPath := filepath.Join(volumeMount.MountPath, filePath)
+		outputPath := filepath.Join(volumeMount.Name, filePath)
 
 		// Apply file transformation
 		fileTransformConfigs := append(transformConfigs, transformations.Config{
@@ -444,7 +444,7 @@ func (f *DeploymentFetcher) processProjectedConfigMap(clientset *kubernetes.Clie
 		if path, ok := keyToPath[key]; ok {
 			filePath = path
 		}
-		outputPath := filepath.Join(volumeMount.MountPath, filePath)
+		outputPath := filepath.Join(volumeMount.Name, filePath)
 
 		// Apply file transformation
 		fileTransformConfigs := append(transformConfigs, transformations.Config{
@@ -505,7 +505,7 @@ func (f *DeploymentFetcher) processProjectedSecret(clientset *kubernetes.Clients
 		if path, ok := keyToPath[key]; ok {
 			filePath = path
 		}
-		outputPath := filepath.Join(volumeMount.MountPath, filePath)
+		outputPath := filepath.Join(volumeMount.Name, filePath)
 
 		// Apply file transformation
 		fileTransformConfigs := append(transformConfigs, transformations.Config{
