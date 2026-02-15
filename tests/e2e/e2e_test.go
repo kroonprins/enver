@@ -226,7 +226,8 @@ func TestGenerateWithTransformations(t *testing.T) {
 	cmd := exec.Command(binaryPath, "generate",
 		"--context", "deployment",
 		"--kube-context", "kind-kind",
-		"--output", "output/transform-test.env")
+		"--output-name", "transform-test.env",
+		"--output-directory", "output")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -260,7 +261,8 @@ func TestGenerateNoKubeContext(t *testing.T) {
 	// Run generate without kube-context when needed
 	cmd := exec.Command(binaryPath, "generate",
 		"--context", "configmap-only",
-		"--output", "output/should-fail.env")
+		"--output-name", "should-fail.env",
+		"--output-directory", "output")
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
@@ -294,7 +296,8 @@ func runGenerateTest(t *testing.T, context, goldenFile string) {
 	cmd := exec.Command(binaryPath, "generate",
 		"--context", context,
 		"--kube-context", "kind-kind",
-		"--output", outputFile)
+		"--output-name", goldenFile,
+		"--output-directory", "output")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
