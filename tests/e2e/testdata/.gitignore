@@ -1,0 +1,2 @@
+# Ignore output directory created by e2e tests
+output/
