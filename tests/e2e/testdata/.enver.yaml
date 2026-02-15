@@ -1,0 +1,117 @@
+contexts:
+  - configmap-only
+  - secret-only
+  - deployment
+  - statefulset
+  - daemonset
+  - all
+
+executions:
+  - name: configmap-test
+    output:
+      name: configmap.env
+      directory: output
+    kube-context: kind-kind
+    contexts:
+      - configmap-only
+  - name: secret-test
+    output:
+      name: secret.env
+      directory: output
+    kube-context: kind-kind
+    contexts:
+      - secret-only
+  - name: deployment-test
+    output:
+      name: deployment.env
+      directory: output
+    kube-context: kind-kind
+    contexts:
+      - deployment
+  - name: statefulset-test
+    output:
+      name: statefulset.env
+      directory: output
+    kube-context: kind-kind
+    contexts:
+      - statefulset
+  - name: daemonset-test
+    output:
+      name: daemonset.env
+      directory: output
+    kube-context: kind-kind
+    contexts:
+      - daemonset
+  - name: all-test
+    output:
+      name: all.env
+      directory: output
+    kube-context: kind-kind
+    contexts:
+      - all
+
+sources:
+  - type: ConfigMap
+    name: e2e-configmap
+    namespace: enver-e2e-test
+    contexts:
+      include:
+        - configmap-only
+        - all
+
+  - type: Secret
+    name: e2e-secret
+    namespace: enver-e2e-test
+    contexts:
+      include:
+        - secret-only
+        - all
+
+  - type: Deployment
+    name: e2e-deployment
+    namespace: enver-e2e-test
+    containers:
+      - main
+    volumeMountKeyMappings:
+      - kind: ConfigMap
+        name: e2e-file-configmap
+        mappings:
+          config.json: CONFIG_FILE_PATH
+          settings.yaml: SETTINGS_FILE_PATH
+    contexts:
+      include:
+        - deployment
+        - all
+
+  - type: StatefulSet
+    name: e2e-statefulset
+    namespace: enver-e2e-test
+    contexts:
+      include:
+        - statefulset
+        - all
+
+  - type: DaemonSet
+    name: e2e-daemonset
+    namespace: enver-e2e-test
+    contexts:
+      include:
+        - daemonset
+        - all
+
+  - type: Vars
+    name: inline-vars
+    vars:
+      - name: INLINE_VAR1
+        value: inline-value-1
+      - name: INLINE_VAR2
+        value: inline-value-2
+    contexts:
+      include:
+        - all
+
+  - type: EnvFile
+    path: local.env
+    contexts:
+      include:
+        - all

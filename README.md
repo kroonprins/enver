@@ -474,6 +474,24 @@ contexts:
 # ...
 ```
 
+## Development
+
+### Running Tests
+
+```bash
+# Run unit tests
+make test-unit
+
+# Run E2E tests (requires Kind cluster)
+make setup-kind      # Create Kind cluster if needed
+make test-e2e        # Run E2E tests
+
+# Update golden files after intentional changes
+make test-e2e-update
+```
+
+E2E tests use a Kind cluster named `kind` and create a temporary namespace `enver-e2e-test` for test resources.
+
 ## Interactive Prompts
 
 When flags are not provided:

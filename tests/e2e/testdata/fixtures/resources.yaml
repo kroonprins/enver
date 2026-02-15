@@ -1,0 +1,135 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: enver-e2e-test
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: e2e-configmap
+  namespace: enver-e2e-test
+data:
+  CONFIG_KEY1: config-value-1
+  CONFIG_KEY2: config-value-2
+  SHARED_KEY: from-configmap
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: e2e-secret
+  namespace: enver-e2e-test
+type: Opaque
+stringData:
+  SECRET_KEY1: secret-value-1
+  SECRET_KEY2: secret-value-2
+  ENCODED_VALUE: dGVzdC1lbmNvZGVk
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: e2e-file-configmap
+  namespace: enver-e2e-test
+data:
+  config.json: |
+    {
+      "database": "postgres",
+      "port": 5432
+    }
+  settings.yaml: |
+    logging:
+      level: info
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: e2e-deployment
+  namespace: enver-e2e-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: e2e-test
+  template:
+    metadata:
+      labels:
+        app: e2e-test
+    spec:
+      volumes:
+        - name: config-volume
+          configMap:
+            name: e2e-file-configmap
+      containers:
+        - name: main
+          image: busybox
+          command: ["sleep", "3600"]
+          env:
+            - name: DIRECT_VAR
+              value: "direct-value"
+            - name: FROM_CONFIGMAP
+              valueFrom:
+                configMapKeyRef:
+                  name: e2e-configmap
+                  key: CONFIG_KEY1
+            - name: FROM_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: e2e-secret
+                  key: SECRET_KEY1
+          envFrom:
+            - configMapRef:
+                name: e2e-configmap
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: e2e-statefulset
+  namespace: enver-e2e-test
+spec:
+  serviceName: e2e-statefulset
+  replicas: 1
+  selector:
+    matchLabels:
+      app: e2e-statefulset
+  template:
+    metadata:
+      labels:
+        app: e2e-statefulset
+    spec:
+      containers:
+        - name: main
+          image: busybox
+          command: ["sleep", "3600"]
+          env:
+            - name: STATEFULSET_VAR
+              value: "statefulset-value"
+          envFrom:
+            - secretRef:
+                name: e2e-secret
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: e2e-daemonset
+  namespace: enver-e2e-test
+spec:
+  selector:
+    matchLabels:
+      app: e2e-daemonset
+  template:
+    metadata:
+      labels:
+        app: e2e-daemonset
+    spec:
+      containers:
+        - name: main
+          image: busybox
+          command: ["sleep", "3600"]
+          env:
+            - name: DAEMONSET_VAR
+              value: "daemonset-value"
+          envFrom:
+            - configMapRef:
+                name: e2e-configmap
