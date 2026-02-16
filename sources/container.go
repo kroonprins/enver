@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"enver/gitutil"
 	"enver/transformations"
 
 	corev1 "k8s.io/api/core/v1"
@@ -121,6 +124,15 @@ func (f *ContainerFetcher) Fetch(clientset *kubernetes.Clientset, source Source,
 		}
 
 		entries = append(entries, containerEntries...)
+	}
+
+	// Process file extractions
+	for _, fileExtract := range source.Files {
+		fileEntry, err := f.extractFile(clientset, namespace, podName, pod, fileExtract, outputDirectory)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, fileEntry)
 	}
 
 	return entries, nil
@@ -250,4 +262,82 @@ func (f *ContainerFetcher) parseEnvOutput(output string, source Source, containe
 	}
 
 	return entries, nil
+}
+
+func (f *ContainerFetcher) extractFile(clientset *kubernetes.Clientset, namespace, podName string, pod *corev1.Pod, fileExtract ContainerFileExtract, outputDirectory string) (EnvEntry, error) {
+	// Validate that container exists in the pod
+	containerName := fileExtract.Container
+	containerFound := false
+	for _, container := range pod.Spec.Containers {
+		if container.Name == containerName {
+			containerFound = true
+			break
+		}
+	}
+	if !containerFound {
+		return EnvEntry{}, fmt.Errorf("container %q not found in pod %s/%s", containerName, namespace, podName)
+	}
+
+	// Exec cat to read the file content
+	fileContent, err := f.execCatCommand(clientset, namespace, podName, containerName, fileExtract.Path)
+	if err != nil {
+		return EnvEntry{}, fmt.Errorf("failed to read file %q from container %s in pod %s/%s: %w", fileExtract.Path, containerName, namespace, podName, err)
+	}
+
+	// Build output path relative to output directory
+	outputPath := filepath.Join(outputDirectory, fileExtract.Output)
+
+	// Create output directory if it doesn't exist
+	outputDir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return EnvEntry{}, fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Write file content
+	if err := os.WriteFile(outputPath, []byte(fileContent), 0644); err != nil {
+		return EnvEntry{}, fmt.Errorf("failed to write file %s: %w", outputPath, err)
+	}
+
+	// Check if output file should be added to .gitignore
+	if err := gitutil.EnsureGitignored(outputPath); err != nil {
+		return EnvEntry{}, err
+	}
+
+	return EnvEntry{
+		Key:        fileExtract.Key,
+		Value:      outputPath,
+		SourceType: "Container",
+		Name:       fmt.Sprintf("%s/%s (file: %s)", podName, containerName, fileExtract.Path),
+		Namespace:  namespace,
+	}, nil
+}
+
+func (f *ContainerFetcher) execCatCommand(clientset *kubernetes.Clientset, namespace, podName, containerName, filePath string) (string, error) {
+	req := clientset.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(podName).
+		Namespace(namespace).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: containerName,
+			Command:   []string{"cat", filePath},
+			Stdout:    true,
+			Stderr:    true,
+		}, scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(f.restConfig, "POST", req.URL())
+	if err != nil {
+		return "", fmt.Errorf("failed to create executor: %w", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err = exec.StreamWithContext(context.Background(), remotecommand.StreamOptions{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	})
+	if err != nil {
+		return "", fmt.Errorf("cat failed: %w (stderr: %s)", err, stderr.String())
+	}
+
+	return stdout.String(), nil
 }

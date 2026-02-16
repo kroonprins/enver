@@ -39,6 +39,14 @@ type VolumeMountKeyMapping struct {
 	Mappings map[string]string `yaml:"mappings"` // original key -> new key
 }
 
+// ContainerFileExtract defines a file to extract from a container
+type ContainerFileExtract struct {
+	Container string `yaml:"container"` // container name to extract from
+	Path      string `yaml:"path"`      // path to file in the container
+	Output    string `yaml:"output"`    // output path relative to output directory
+	Key       string `yaml:"key"`       // environment variable name for the file path
+}
+
 // TransformationConfig defines a transformation to apply to variables
 type TransformationConfig struct {
 	Type      string   `yaml:"type"`      // base64_decode, base64_encode, prefix, suffix, file
@@ -62,6 +70,7 @@ type Source struct {
 	Vars                   []VarEntry              `yaml:"vars"`                   // for Vars source type
 	Containers             []string                `yaml:"containers"`             // for Deployment/Container source type
 	VolumeMountKeyMappings []VolumeMountKeyMapping `yaml:"volumeMountKeyMappings"` // for Deployment source type
+	Files                  []ContainerFileExtract  `yaml:"files"`                  // for Container source type
 }
 
 // ShouldExcludeVariable returns true if the variable should be excluded

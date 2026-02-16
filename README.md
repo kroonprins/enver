@@ -179,9 +179,38 @@ sources:
 
 For Deployment, StatefulSet, and DaemonSet kinds, the first running pod found is used. An error is returned if no running pods are found.
 
+#### File Extraction
+
+You can extract files from containers and create environment variables pointing to them:
+
+```yaml
+sources:
+  - type: Container
+    kind: Deployment
+    name: my-app
+    namespace: default
+    files:
+      - container: app
+        path: /etc/config/app.yaml
+        output: config/app.yaml
+        key: APP_CONFIG_FILE
+      - container: app
+        path: /etc/ssl/certs/ca.crt
+        output: certs/ca.crt
+        key: CA_CERT_PATH
+```
+
+Each file entry:
+- `container`: Container name to extract the file from
+- `path`: Path to the file inside the container
+- `output`: Output path relative to the output directory
+- `key`: Environment variable name that will contain the path to the extracted file
+
+The extracted files are automatically checked against `.gitignore` and you'll be prompted to add them if needed.
+
 **Requirements:**
 - The pod must be in `Running` state
-- The `env` command must be available in the container
+- The `env` and `cat` commands must be available in the container
 - Your kubeconfig must have permission to exec into pods
 
 **Note:** This source type requires the ability to exec into pods. It will not work in restricted environments where pod exec is disabled.

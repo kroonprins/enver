@@ -77,6 +77,13 @@
             "$ref": "#/$defs/volumeMountKeyMapping"
           }
         },
+        "files": {
+          "type": "array",
+          "description": "Files to extract from containers (for Container type)",
+          "items": {
+            "$ref": "#/$defs/containerFileExtract"
+          }
+        },
         "contexts": {
           "$ref": "#/$defs/sourceContexts"
         },
@@ -359,6 +366,29 @@
           "additionalProperties": {
             "type": "string"
           }
+        }
+      }
+    },
+    "containerFileExtract": {
+      "type": "object",
+      "description": "A file to extract from a container",
+      "required": ["container", "path", "output", "key"],
+      "properties": {
+        "container": {
+          "type": "string",
+          "description": "Name of the container to extract the file from"
+        },
+        "path": {
+          "type": "string",
+          "description": "Path to the file inside the container"
+        },
+        "output": {
+          "type": "string",
+          "description": "Output path relative to output directory"
+        },
+        "key": {
+          "type": "string",
+          "description": "Environment variable name for the file path"
         }
       }
     }
