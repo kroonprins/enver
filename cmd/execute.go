@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -38,6 +39,11 @@ type ExecuteConfig struct {
 type executionResult struct {
 	name string
 	err  error
+}
+
+type kubeClientEntry struct {
+	clientset  *kubernetes.Clientset
+	restConfig *rest.Config
 }
 
 var executeNames []string
@@ -170,30 +176,20 @@ var executeCmd = &cobra.Command{
 }
 
 func runExecution(execution Execution, configSources []sources.Source, loadingRules *clientcmd.ClientConfigLoadingRules, clientCache *sync.Map, clientCacheMu *sync.Mutex, outputMu *sync.Mutex) error {
-	// Map of source types to their fetchers
-	fetchers := map[string]sources.Fetcher{
-		"ConfigMap":   &sources.ConfigMapFetcher{},
-		"Secret":      &sources.SecretFetcher{},
-		"EnvFile":     &sources.EnvFileFetcher{},
-		"Vars":        &sources.VarsFetcher{},
-		"Deployment":  &sources.DeploymentFetcher{},
-		"StatefulSet": &sources.StatefulSetFetcher{},
-		"DaemonSet":   &sources.DaemonSetFetcher{},
-	}
-
 	// Check if this execution needs Kubernetes
 	executionNeedsKubernetes := false
 	for _, source := range configSources {
 		if !source.ShouldInclude(execution.Contexts) {
 			continue
 		}
-		if source.Type == "ConfigMap" || source.Type == "Secret" || source.Type == "Deployment" || source.Type == "StatefulSet" || source.Type == "DaemonSet" {
+		if source.Type == "ConfigMap" || source.Type == "Secret" || source.Type == "Deployment" || source.Type == "StatefulSet" || source.Type == "DaemonSet" || source.Type == "Container" {
 			executionNeedsKubernetes = true
 			break
 		}
 	}
 
 	var clientset *kubernetes.Clientset
+	var restConfig *rest.Config
 
 	if executionNeedsKubernetes {
 		selectedKubeContext := execution.KubeContext
@@ -203,17 +199,22 @@ func runExecution(execution Execution, configSources []sources.Source, loadingRu
 
 		// Check cache first
 		if cached, ok := clientCache.Load(selectedKubeContext); ok {
-			clientset = cached.(*kubernetes.Clientset)
+			entry := cached.(*kubeClientEntry)
+			clientset = entry.clientset
+			restConfig = entry.restConfig
 		} else {
 			// Use mutex to prevent duplicate client creation
 			clientCacheMu.Lock()
 			// Double-check after acquiring lock
 			if cached, ok := clientCache.Load(selectedKubeContext); ok {
 				clientCacheMu.Unlock()
-				clientset = cached.(*kubernetes.Clientset)
+				entry := cached.(*kubeClientEntry)
+				clientset = entry.clientset
+				restConfig = entry.restConfig
 			} else {
 				// Load kubeconfig with the selected context
-				restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+				var err error
+				restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 					loadingRules,
 					&clientcmd.ConfigOverrides{CurrentContext: selectedKubeContext},
 				).ClientConfig()
@@ -229,11 +230,26 @@ func runExecution(execution Execution, configSources []sources.Source, loadingRu
 					return fmt.Errorf("failed to create kubernetes client: %w", err)
 				}
 
-				// Cache it
-				clientCache.Store(selectedKubeContext, clientset)
+				// Cache both clientset and restConfig
+				clientCache.Store(selectedKubeContext, &kubeClientEntry{
+					clientset:  clientset,
+					restConfig: restConfig,
+				})
 				clientCacheMu.Unlock()
 			}
 		}
+	}
+
+	// Map of source types to their fetchers
+	fetchers := map[string]sources.Fetcher{
+		"ConfigMap":   &sources.ConfigMapFetcher{},
+		"Secret":      &sources.SecretFetcher{},
+		"EnvFile":     &sources.EnvFileFetcher{},
+		"Vars":        &sources.VarsFetcher{},
+		"Deployment":  &sources.DeploymentFetcher{},
+		"StatefulSet": &sources.StatefulSetFetcher{},
+		"DaemonSet":   &sources.DaemonSetFetcher{},
+		"Container":   sources.NewContainerFetcher(restConfig),
 	}
 
 	// Apply defaults for output

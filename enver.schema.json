@@ -36,7 +36,12 @@
         "type": {
           "type": "string",
           "description": "Type of source",
-          "enum": ["ConfigMap", "Secret", "EnvFile", "Vars", "Deployment", "StatefulSet", "DaemonSet"]
+          "enum": ["ConfigMap", "Secret", "EnvFile", "Vars", "Deployment", "StatefulSet", "DaemonSet", "Container"]
+        },
+        "kind": {
+          "type": "string",
+          "description": "Kind of workload for Container source type",
+          "enum": ["Pod", "Deployment", "StatefulSet", "DaemonSet"]
         },
         "name": {
           "type": "string",
@@ -141,6 +146,14 @@
           },
           "then": {
             "required": ["name"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "Container" } }
+          },
+          "then": {
+            "required": ["name", "kind"]
           }
         }
       ]

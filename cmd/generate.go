@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -68,7 +69,7 @@ var generateCmd = &cobra.Command{
 				continue
 			}
 			filteredSources = append(filteredSources, source)
-			if source.Type == "ConfigMap" || source.Type == "Secret" || source.Type == "Deployment" || source.Type == "StatefulSet" || source.Type == "DaemonSet" {
+			if source.Type == "ConfigMap" || source.Type == "Secret" || source.Type == "Deployment" || source.Type == "StatefulSet" || source.Type == "DaemonSet" || source.Type == "Container" {
 				needsKubernetes = true
 			}
 		}
@@ -77,6 +78,7 @@ var generateCmd = &cobra.Command{
 		loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 
 		var clientset *kubernetes.Clientset
+		var restConfig *rest.Config
 
 		// Only set up Kubernetes client if needed
 		if needsKubernetes {
@@ -113,7 +115,8 @@ var generateCmd = &cobra.Command{
 			}
 
 			// Load kubeconfig with the selected context
-			restConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+			var err error
+			restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 				loadingRules,
 				&clientcmd.ConfigOverrides{CurrentContext: selectedKubeContext},
 			).ClientConfig()
@@ -137,6 +140,7 @@ var generateCmd = &cobra.Command{
 			"Deployment":  &sources.DeploymentFetcher{},
 			"StatefulSet": &sources.StatefulSetFetcher{},
 			"DaemonSet":   &sources.DaemonSetFetcher{},
+			"Container":   sources.NewContainerFetcher(restConfig),
 		}
 
 		// Collect all env vars with their source info

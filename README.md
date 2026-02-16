@@ -90,6 +90,7 @@ sources:
 | `Deployment` | Kubernetes Deployment env vars | `name` |
 | `StatefulSet` | Kubernetes StatefulSet env vars | `name` |
 | `DaemonSet` | Kubernetes DaemonSet env vars | `name` |
+| `Container` | Live env vars from running containers | `name`, `kind` |
 | `EnvFile` | Local .env file | `path` |
 | `Vars` | Inline variables | `vars` |
 
@@ -140,6 +141,50 @@ sources:
 This maps the original key names from the ConfigMap/Secret to custom environment variable names.
 
 **Note:** Field references (`fieldRef`) and resource field references (`resourceFieldRef`) are skipped as they require pod runtime context.
+
+### Container Source
+
+The `Container` source retrieves environment variables directly from running containers by executing the `env` command inside them. This captures the actual runtime environment, including variables set by init containers, entrypoint scripts, or the container runtime.
+
+```yaml
+sources:
+  # Get env vars from a specific pod
+  - type: Container
+    kind: Pod
+    name: my-pod
+    namespace: default
+    containers:           # optional, defaults to all containers
+      - app
+
+  # Get env vars from a deployment's pod
+  - type: Container
+    kind: Deployment
+    name: my-deployment
+    namespace: default
+
+  # Also works with StatefulSet and DaemonSet
+  - type: Container
+    kind: StatefulSet
+    name: my-statefulset
+```
+
+#### Kind Values
+
+| Kind | Behavior |
+|------|----------|
+| `Pod` | Exec directly into the named pod |
+| `Deployment` | Find a running pod matching the deployment's selector |
+| `StatefulSet` | Find a running pod matching the statefulset's selector |
+| `DaemonSet` | Find a running pod matching the daemonset's selector |
+
+For Deployment, StatefulSet, and DaemonSet kinds, the first running pod found is used. An error is returned if no running pods are found.
+
+**Requirements:**
+- The pod must be in `Running` state
+- The `env` command must be available in the container
+- Your kubeconfig must have permission to exec into pods
+
+**Note:** This source type requires the ability to exec into pods. It will not work in restricted environments where pod exec is disabled.
 
 ### Context Filtering
 

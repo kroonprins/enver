@@ -54,12 +54,13 @@ type Source struct {
 	Name                   string                  `yaml:"name"`
 	Namespace              string                  `yaml:"namespace"`
 	Type                   string                  `yaml:"type"`
+	Kind                   string                  `yaml:"kind"`                   // for Container source type: Pod, Deployment, StatefulSet, DaemonSet
 	Path                   string                  `yaml:"path"`
 	Contexts               SourceContexts          `yaml:"contexts"`
 	Variables              SourceVariables         `yaml:"variables"`
 	Transformations        []TransformationConfig  `yaml:"transformations"`
 	Vars                   []VarEntry              `yaml:"vars"`                   // for Vars source type
-	Containers             []string                `yaml:"containers"`             // for Deployment source type
+	Containers             []string                `yaml:"containers"`             // for Deployment/Container source type
 	VolumeMountKeyMappings []VolumeMountKeyMapping `yaml:"volumeMountKeyMappings"` // for Deployment source type
 }
 
