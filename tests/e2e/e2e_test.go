@@ -76,8 +76,19 @@ func applyFixtures() error {
 		"-n", "enver-e2e-test", "--timeout=60s", "--context", "kind-kind")
 	output, err = cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("kubectl wait failed: %v\n%s", err, output)
+		return fmt.Errorf("kubectl wait for e2e-deployment failed: %v\n%s", err, output)
 	}
+
+	// Wait for container-test deployment
+	cmd = exec.Command("kubectl", "wait", "--for=condition=available", "deployment/e2e-container-test",
+		"-n", "enver-e2e-test", "--timeout=60s", "--context", "kind-kind")
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("kubectl wait for e2e-container-test failed: %v\n%s", err, output)
+	}
+
+	// Give extra time for the container's init script to create the config file
+	time.Sleep(2 * time.Second)
 
 	return nil
 }
@@ -105,6 +116,126 @@ func TestGenerateStatefulSet(t *testing.T) {
 
 func TestGenerateDaemonSet(t *testing.T) {
 	runGenerateTest(t, "daemonset", "daemonset.env")
+}
+
+func TestGenerateContainer(t *testing.T) {
+	// Change to testdata directory
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	defer os.Chdir(origDir)
+
+	if err := os.Chdir("testdata"); err != nil {
+		t.Fatalf("Failed to change to testdata directory: %v", err)
+	}
+
+	// Clean up output directory
+	os.RemoveAll("output")
+	defer os.RemoveAll("output")
+
+	outputFile := filepath.Join("output", "container.env")
+
+	// Run generate command
+	cmd := exec.Command(binaryPath, "generate",
+		"--context", "container",
+		"--kube-context", "kind-kind",
+		"--output-name", "container.env",
+		"--output-directory", "output")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Generate command failed: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+
+	// Read actual output
+	actual, err := os.ReadFile(outputFile)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+
+	// Verify the output contains expected environment variables from the container
+	actualStr := string(actual)
+	expectedVars := []string{"APP_NAME=e2e-container-test", "APP_ENV=testing"}
+	for _, expected := range expectedVars {
+		if !strings.Contains(actualStr, expected) {
+			t.Errorf("Expected output to contain %q, but it didn't.\nActual output:\n%s", expected, actualStr)
+		}
+	}
+
+	// Verify the file extraction worked
+	if !strings.Contains(actualStr, "CONFIG_FILE_PATH=") {
+		t.Errorf("Expected output to contain CONFIG_FILE_PATH, but it didn't.\nActual output:\n%s", actualStr)
+	}
+
+	// Verify the extracted file exists
+	if _, err := os.Stat("output/container-files/config.json"); os.IsNotExist(err) {
+		t.Error("Expected output/container-files/config.json to be created by file extraction")
+	}
+
+	// Verify the extracted file contains expected content
+	fileContent, err := os.ReadFile("output/container-files/config.json")
+	if err != nil {
+		t.Fatalf("Failed to read extracted file: %v", err)
+	}
+	if !strings.Contains(string(fileContent), `"app": "test"`) {
+		t.Errorf("Expected extracted file to contain JSON content, got: %s", string(fileContent))
+	}
+}
+
+func TestExecuteContainer(t *testing.T) {
+	// Change to testdata directory
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	defer os.Chdir(origDir)
+
+	if err := os.Chdir("testdata"); err != nil {
+		t.Fatalf("Failed to change to testdata directory: %v", err)
+	}
+
+	// Clean up output directory
+	os.RemoveAll("output")
+	defer os.RemoveAll("output")
+
+	// Run execute command with container-test
+	cmd := exec.Command(binaryPath, "execute", "--name", "container-test")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Execute command failed: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+
+	// Verify container.env was created
+	actual, err := os.ReadFile("output/container.env")
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+
+	actualStr := string(actual)
+
+	// Verify expected env vars
+	expectedVars := []string{"APP_NAME=e2e-container-test", "APP_ENV=testing"}
+	for _, expected := range expectedVars {
+		if !strings.Contains(actualStr, expected) {
+			t.Errorf("Expected output to contain %q, but it didn't.\nActual output:\n%s", expected, actualStr)
+		}
+	}
+
+	// Verify the file extraction worked
+	if !strings.Contains(actualStr, "CONFIG_FILE_PATH=") {
+		t.Errorf("Expected output to contain CONFIG_FILE_PATH, but it didn't.\nActual output:\n%s", actualStr)
+	}
+
+	// Verify the extracted file exists
+	if _, err := os.Stat("output/container-files/config.json"); os.IsNotExist(err) {
+		t.Error("Expected output/container-files/config.json to be created by file extraction")
+	}
 }
 
 func TestExecuteCommand(t *testing.T) {

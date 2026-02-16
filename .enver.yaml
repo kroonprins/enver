@@ -3,6 +3,7 @@ contexts:
   - acc
   - local-db
   - test-deployment
+  - test-container
 
 executions:
   - name: int
@@ -27,6 +28,13 @@ executions:
     kube-context: kind-kind
     contexts:
       - test-deployment
+  - name: container-test
+    output: 
+      name: container.env
+      directory: generated2
+    kube-context: kind-kind
+    contexts:
+      - test-container
 
 sources:
   - type: ConfigMap
@@ -102,3 +110,23 @@ sources:
     contexts:
       include:
         - test-deployment
+  - type: Container
+    kind: Deployment
+    name: busybox-deployment
+    containers:
+      - busybox-1
+      - busybox-2
+    files:
+      - container: busybox-2
+        path: /tmp/file1.json
+        output: container-files/file1.json
+        key: FILE1
+    contexts:
+      include:
+        - test-container        
+    variables:
+      exclude:
+        - KUBERNETES_*
+        - PATH
+        - HOSTNAME
+        - HOME

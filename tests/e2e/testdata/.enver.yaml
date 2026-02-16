@@ -4,6 +4,7 @@ contexts:
   - deployment
   - statefulset
   - daemonset
+  - container
   - all
 
 executions:
@@ -42,6 +43,13 @@ executions:
     kube-context: kind-kind
     contexts:
       - daemonset
+  - name: container-test
+    output:
+      name: container.env
+      directory: output
+    kube-context: kind-kind
+    contexts:
+      - container
   - name: all-test
     output:
       name: all.env
@@ -114,4 +122,29 @@ sources:
     path: local.env
     contexts:
       include:
+        - all
+
+  - type: Container
+    kind: Deployment
+    name: e2e-container-test
+    namespace: enver-e2e-test
+    containers:
+      - app
+    files:
+      - container: app
+        path: /tmp/config.json
+        output: container-files/config.json
+        key: CONFIG_FILE_PATH
+    variables:
+      exclude:
+        - KUBERNETES_.*
+        - PATH
+        - HOSTNAME
+        - HOME
+        - PWD
+        - SHLVL
+        - TERM
+    contexts:
+      include:
+        - container
         - all

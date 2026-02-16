@@ -133,3 +133,35 @@ spec:
           envFrom:
             - configMapRef:
                 name: e2e-configmap
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: e2e-container-test
+  namespace: enver-e2e-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: e2e-container-test
+  template:
+    metadata:
+      labels:
+        app: e2e-container-test
+    spec:
+      containers:
+        - name: app
+          image: busybox
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo '{"app": "test", "version": "1.0"}' > /tmp/config.json
+              export CONTAINER_VAR1=container-value-1
+              export CONTAINER_VAR2=container-value-2
+              sleep 3600
+          env:
+            - name: APP_NAME
+              value: "e2e-container-test"
+            - name: APP_ENV
+              value: "testing"
