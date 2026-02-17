@@ -5,6 +5,7 @@ contexts:
   - statefulset
   - daemonset
   - container
+  - variable-filter
   - all
 
 executions:
@@ -50,6 +51,13 @@ executions:
     kube-context: kind-kind
     contexts:
       - container
+  - name: variable-filter-test
+    output:
+      name: variable-filter.env
+      directory: output
+    kube-context: kind-kind
+    contexts:
+      - variable-filter
   - name: all-test
     output:
       name: all.env
@@ -148,3 +156,28 @@ sources:
       include:
         - container
         - all
+
+  # Test variable include filtering - only include CONFIG_* variables
+  - type: ConfigMap
+    name: e2e-configmap
+    namespace: enver-e2e-test
+    variables:
+      include:
+        - ^CONFIG_.*      # only include variables starting with CONFIG_
+    contexts:
+      include:
+        - variable-filter
+
+  # Test variable include + exclude combination
+  - type: Secret
+    name: e2e-secret
+    namespace: enver-e2e-test
+    variables:
+      include:
+        - ^SECRET_.*      # include SECRET_* variables
+        - ENCODED_VALUE   # also include ENCODED_VALUE
+      exclude:
+        - SECRET_KEY2     # but exclude SECRET_KEY2
+    contexts:
+      include:
+        - variable-filter

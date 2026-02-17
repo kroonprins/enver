@@ -238,6 +238,65 @@ func TestExecuteContainer(t *testing.T) {
 	}
 }
 
+func TestVariableIncludeFilter(t *testing.T) {
+	// Change to testdata directory
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	defer os.Chdir(origDir)
+
+	if err := os.Chdir("testdata"); err != nil {
+		t.Fatalf("Failed to change to testdata directory: %v", err)
+	}
+
+	// Clean up output directory
+	os.RemoveAll("output")
+	defer os.RemoveAll("output")
+
+	// Run execute command with variable-filter-test
+	cmd := exec.Command(binaryPath, "execute", "--name", "variable-filter-test")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Execute command failed: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+
+	// Verify variable-filter.env was created
+	actual, err := os.ReadFile("output/variable-filter.env")
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+
+	actualStr := string(actual)
+
+	// ConfigMap source with include: ^CONFIG_.* should only have CONFIG_KEY1 and CONFIG_KEY2
+	// (SHARED_KEY should be filtered out)
+	if !strings.Contains(actualStr, "CONFIG_KEY1=config-value-1") {
+		t.Errorf("Expected CONFIG_KEY1 to be included, got:\n%s", actualStr)
+	}
+	if !strings.Contains(actualStr, "CONFIG_KEY2=config-value-2") {
+		t.Errorf("Expected CONFIG_KEY2 to be included, got:\n%s", actualStr)
+	}
+	if strings.Contains(actualStr, "SHARED_KEY") {
+		t.Errorf("Expected SHARED_KEY to be filtered out by include pattern, got:\n%s", actualStr)
+	}
+
+	// Secret source with include: ^SECRET_.* + ENCODED_VALUE, exclude: SECRET_KEY2
+	// Should have SECRET_KEY1 and ENCODED_VALUE, but not SECRET_KEY2
+	if !strings.Contains(actualStr, "SECRET_KEY1=secret-value-1") {
+		t.Errorf("Expected SECRET_KEY1 to be included, got:\n%s", actualStr)
+	}
+	if !strings.Contains(actualStr, "ENCODED_VALUE=") {
+		t.Errorf("Expected ENCODED_VALUE to be included, got:\n%s", actualStr)
+	}
+	if strings.Contains(actualStr, "SECRET_KEY2") {
+		t.Errorf("Expected SECRET_KEY2 to be excluded, got:\n%s", actualStr)
+	}
+}
+
 func TestExecuteCommand(t *testing.T) {
 	// Change to testdata directory
 	origDir, err := os.Getwd()
@@ -381,7 +440,7 @@ func TestExecuteInteractiveSelection(t *testing.T) {
 	}
 
 	// Select the first item (configmap-test) with space, then press enter
-	console.Send(" ")  // Space to select first item
+	console.Send(" ") // Space to select first item
 	time.Sleep(100 * time.Millisecond)
 	console.Send("\r") // Enter to confirm
 

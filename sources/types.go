@@ -63,7 +63,7 @@ type Source struct {
 	Name                   string                  `yaml:"name"`
 	Namespace              string                  `yaml:"namespace"`
 	Type                   string                  `yaml:"type"`
-	Kind                   string                  `yaml:"kind"`                   // for Container source type: Pod, Deployment, StatefulSet, DaemonSet
+	Kind                   string                  `yaml:"kind"` // for Container source type: Pod, Deployment, StatefulSet, DaemonSet
 	Path                   string                  `yaml:"path"`
 	Contexts               SourceContexts          `yaml:"contexts"`
 	Variables              SourceVariables         `yaml:"variables"`
