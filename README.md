@@ -245,9 +245,36 @@ sources:
     name: shared-config
 ```
 
-### Variable Exclusion
+### Variable Filtering
 
-You can exclude specific environment variables from a source using exact names or regex patterns:
+You can filter environment variables from a source using `include` and `exclude` patterns. Both support exact names and regex patterns.
+
+#### Include Patterns
+
+Use `include` to specify which variables to keep. Only variables matching at least one include pattern will be included:
+
+```yaml
+sources:
+  - type: ConfigMap
+    name: my-config
+    variables:
+      include:
+        - ^APP_.*         # regex: only include vars starting with APP_
+        - ^DB_.*          # regex: also include vars starting with DB_
+
+  - type: Container
+    kind: Deployment
+    name: my-app
+    variables:
+      include:
+        - APP_NAME        # exact match
+        - APP_ENV         # exact match
+        - ^CONFIG_.*      # regex: include CONFIG_* vars
+```
+
+#### Exclude Patterns
+
+Use `exclude` to filter out specific variables:
 
 ```yaml
 sources:
@@ -265,16 +292,25 @@ sources:
       exclude:
         - TEMP_TOKEN
         - .*_SECRET$      # regex: exclude all vars ending with _SECRET
-
-  - type: EnvFile
-    path: ./local.env
-    variables:
-      exclude:
-        - LOCAL_ONLY_VAR
-        - ^(DEBUG|TRACE)_ # regex: exclude DEBUG_* and TRACE_* vars
 ```
 
-Patterns in `exclude` are first matched exactly, then as regex patterns. Variables matching any pattern will be filtered out and not included in the generated `.env` file.
+#### Combining Include and Exclude
+
+When both are specified, `include` is applied first, then `exclude`:
+
+```yaml
+sources:
+  - type: Container
+    kind: Deployment
+    name: my-app
+    variables:
+      include:
+        - ^APP_.*         # first, keep only APP_* variables
+      exclude:
+        - APP_DEBUG       # then, exclude APP_DEBUG from those
+```
+
+Patterns are first matched exactly, then as regex patterns.
 
 ### Transformations
 

@@ -23,6 +23,7 @@ type SourceContexts struct {
 
 // SourceVariables defines variable-level filtering for a source
 type SourceVariables struct {
+	Include []string `yaml:"include"`
 	Exclude []string `yaml:"exclude"`
 }
 
@@ -75,17 +76,42 @@ type Source struct {
 
 // ShouldExcludeVariable returns true if the variable should be excluded
 // Supports exact matches and regex patterns
+// If include list is specified, only variables matching include patterns are kept
+// Exclude patterns are applied after include patterns
 func (s *Source) ShouldExcludeVariable(varName string) bool {
-	for _, pattern := range s.Variables.Exclude {
-		// First try exact match
-		if pattern == varName {
+	// If include list is specified, variable must match at least one pattern
+	if len(s.Variables.Include) > 0 {
+		included := false
+		for _, pattern := range s.Variables.Include {
+			if matchesPattern(varName, pattern) {
+				included = true
+				break
+			}
+		}
+		if !included {
 			return true
 		}
-		// Then try regex match
-		if re, err := regexp.Compile(pattern); err == nil {
-			if re.MatchString(varName) {
-				return true
-			}
+	}
+
+	// Check exclude patterns
+	for _, pattern := range s.Variables.Exclude {
+		if matchesPattern(varName, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesPattern returns true if varName matches the pattern (exact or regex)
+func matchesPattern(varName, pattern string) bool {
+	// First try exact match
+	if pattern == varName {
+		return true
+	}
+	// Then try regex match
+	if re, err := regexp.Compile(pattern); err == nil {
+		if re.MatchString(varName) {
+			return true
 		}
 	}
 	return false

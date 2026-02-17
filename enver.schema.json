@@ -204,9 +204,16 @@
       "type": "object",
       "description": "Variable-level filtering for a source",
       "properties": {
+        "include": {
+          "type": "array",
+          "description": "Variable names or regex patterns to include (if specified, only matching variables are kept)",
+          "items": {
+            "type": "string"
+          }
+        },
         "exclude": {
           "type": "array",
-          "description": "Variable names or regex patterns to exclude",
+          "description": "Variable names or regex patterns to exclude (applied after include)",
           "items": {
             "type": "string"
           }
