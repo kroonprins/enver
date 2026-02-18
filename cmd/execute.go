@@ -48,28 +48,33 @@ type kubeClientEntry struct {
 
 var executeNames []string
 var executeAll bool
+var executeInputFile string
 
 var executeCmd = &cobra.Command{
 	Use:   "execute",
 	Short: "Execute predefined .env generation tasks",
 	Long:  `Reads the .enver.yaml file and executes all predefined generation tasks defined in the executions field.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		content, err := os.ReadFile(".enver.yaml")
+		configFile := executeInputFile
+		if configFile == "" {
+			configFile = ".enver.yaml"
+		}
+		content, err := os.ReadFile(configFile)
 		if err != nil {
-			return fmt.Errorf("failed to read .enver.yaml: %w", err)
+			return fmt.Errorf("failed to read %s: %w", configFile, err)
 		}
 
 		var config ExecuteConfig
 		if err := yaml.Unmarshal(content, &config); err != nil {
-			return fmt.Errorf("failed to parse .enver.yaml: %w", err)
+			return fmt.Errorf("failed to parse %s: %w", configFile, err)
 		}
 
 		if len(config.Executions) == 0 {
-			return fmt.Errorf("no executions found in .enver.yaml")
+			return fmt.Errorf("no executions found in %s", configFile)
 		}
 
 		if len(config.Sources) == 0 {
-			return fmt.Errorf("no sources found in .enver.yaml")
+			return fmt.Errorf("no sources found in %s", configFile)
 		}
 
 		// Determine which executions to run
@@ -333,6 +338,7 @@ func runExecution(execution Execution, configSources []sources.Source, loadingRu
 }
 
 func init() {
+	executeCmd.Flags().StringVarP(&executeInputFile, "input", "i", "", "input configuration file (default .enver.yaml)")
 	executeCmd.Flags().StringArrayVar(&executeNames, "name", []string{}, "execution name to run (can be repeated)")
 	executeCmd.Flags().BoolVar(&executeAll, "all", false, "run all executions")
 	rootCmd.AddCommand(executeCmd)

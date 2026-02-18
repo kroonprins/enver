@@ -22,6 +22,7 @@ enver generate [flags]
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
+| `--input` | `-i` | `.enver.yaml` | Input configuration file |
 | `--output-name` | | `.env` | Output file name |
 | `--output-directory` | | `generated` | Output directory for the .env file |
 | `--context` | `-c` | | Context for filtering sources (can be repeated) |
@@ -39,6 +40,7 @@ enver execute [flags]
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
+| `--input` | `-i` | `.enver.yaml` | Input configuration file |
 | `--all` | | `false` | Run all executions |
 | `--name` | | | Execution name to run (can be repeated) |
 

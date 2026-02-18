@@ -27,24 +27,29 @@ var kubeContext string
 var outputName string
 var outputDirectory string
 var contextFlags []string
+var inputFile string
 
 var generateCmd = &cobra.Command{
 	Use:   "generate",
 	Short: "Generate .env file from ConfigMaps, Secrets and EnvFiles",
 	Long:  `Reads the .enver.yaml file, selects a kubectl context if needed, and generates a .env file from ConfigMaps, Secrets and EnvFiles defined in sources.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		content, err := os.ReadFile(".enver.yaml")
+		configFile := inputFile
+		if configFile == "" {
+			configFile = ".enver.yaml"
+		}
+		content, err := os.ReadFile(configFile)
 		if err != nil {
-			return fmt.Errorf("failed to read .enver.yaml: %w", err)
+			return fmt.Errorf("failed to read %s: %w", configFile, err)
 		}
 
 		var config Config
 		if err := yaml.Unmarshal(content, &config); err != nil {
-			return fmt.Errorf("failed to parse .enver.yaml: %w", err)
+			return fmt.Errorf("failed to parse %s: %w", configFile, err)
 		}
 
 		if len(config.Sources) == 0 {
-			return fmt.Errorf("no sources found in .enver.yaml")
+			return fmt.Errorf("no sources found in %s", configFile)
 		}
 
 		// Select contexts for filtering sources
@@ -207,6 +212,7 @@ var generateCmd = &cobra.Command{
 }
 
 func init() {
+	generateCmd.Flags().StringVarP(&inputFile, "input", "i", "", "input configuration file (default .enver.yaml)")
 	generateCmd.Flags().StringVar(&kubeContext, "kube-context", "", "kubectl context to use (prompts if needed and not provided)")
 	generateCmd.Flags().StringVar(&outputName, "output-name", ".env", "output file name")
 	generateCmd.Flags().StringVar(&outputDirectory, "output-directory", "generated", "output directory for the .env file")
