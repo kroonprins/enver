@@ -6,62 +6,79 @@ contexts:
   - daemonset
   - container
   - variable-filter
+  - clear-test
   - all
 
 executions:
   - name: configmap-test
     output:
       name: configmap.env
-      directory: output
+      directory: output/configmap-test
     kube-context: kind-kind
     contexts:
       - configmap-only
   - name: secret-test
     output:
       name: secret.env
-      directory: output
+      directory: output/secret-test
     kube-context: kind-kind
     contexts:
       - secret-only
   - name: deployment-test
     output:
       name: deployment.env
-      directory: output
+      directory: output/deployment-test
     kube-context: kind-kind
     contexts:
       - deployment
   - name: statefulset-test
     output:
       name: statefulset.env
-      directory: output
+      directory: output/statefulset-test
     kube-context: kind-kind
     contexts:
       - statefulset
   - name: daemonset-test
     output:
       name: daemonset.env
-      directory: output
+      directory: output/daemonset-test
     kube-context: kind-kind
     contexts:
       - daemonset
   - name: container-test
     output:
       name: container.env
-      directory: output
+      directory: output/container-test
     kube-context: kind-kind
     contexts:
       - container
   - name: variable-filter-test
     output:
       name: variable-filter.env
-      directory: output
+      directory: output/variable-filter-test
     kube-context: kind-kind
     contexts:
       - variable-filter
+  - name: clear-true-test
+    output:
+      name: clear-true.env
+      directory: output/clear-true-test
+      clear: true
+    kube-context: kind-kind
+    contexts:
+      - clear-test
+  - name: clear-false-test
+    output:
+      name: clear-false.env
+      directory: output/clear-false-test
+      clear: false
+    kube-context: kind-kind
+    contexts:
+      - clear-test
   - name: all-test
     output:
       name: all.env
-      directory: output
+      directory: output/all-test
     kube-context: kind-kind
     contexts:
       - all
@@ -181,3 +198,11 @@ sources:
     contexts:
       include:
         - variable-filter
+
+  # Source for output directory clear tests
+  - type: ConfigMap
+    name: e2e-configmap
+    namespace: enver-e2e-test
+    contexts:
+      include:
+        - clear-test

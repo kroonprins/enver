@@ -125,8 +125,8 @@ sources:
       include:
         - test-container        
     variables:
-      exclude:
-        - KUBERNETES_*
-        - PATH
-        - HOSTNAME
-        - HOME
+      include:
+        - ^KUBERNETES_*
+        # - PATH
+        # - HOSTNAME
+        # - HOME

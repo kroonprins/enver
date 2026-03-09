@@ -26,6 +26,7 @@ type Config struct {
 var kubeContext string
 var outputName string
 var outputDirectory string
+var outputDirectoryClear bool
 var contextFlags []string
 var inputFile string
 
@@ -148,6 +149,13 @@ var generateCmd = &cobra.Command{
 			"Container":   sources.NewContainerFetcher(restConfig),
 		}
 
+		// Clean output directory if requested
+		if outputDirectoryClear {
+			if err := os.RemoveAll(outputDirectory); err != nil {
+				return fmt.Errorf("failed to clean output directory: %w", err)
+			}
+		}
+
 		// Collect all env vars with their source info
 		var envData []sources.EnvEntry
 
@@ -216,6 +224,7 @@ func init() {
 	generateCmd.Flags().StringVar(&kubeContext, "kube-context", "", "kubectl context to use (prompts if needed and not provided)")
 	generateCmd.Flags().StringVar(&outputName, "output-name", ".env", "output file name")
 	generateCmd.Flags().StringVar(&outputDirectory, "output-directory", "generated", "output directory for the .env file")
+	generateCmd.Flags().BoolVar(&outputDirectoryClear, "output-directory-clear", true, "clear the output directory before generating")
 	generateCmd.Flags().StringArrayVarP(&contextFlags, "context", "c", []string{}, "context for filtering sources (can be repeated, prompts if not provided and contexts are defined)")
 	rootCmd.AddCommand(generateCmd)
 }

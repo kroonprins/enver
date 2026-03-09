@@ -350,6 +350,11 @@
           "type": "string",
           "description": "Output directory",
           "default": "generated"
+        },
+        "clear": {
+          "type": "boolean",
+          "description": "Clear the output directory before generating",
+          "default": true
         }
       }
     },

@@ -25,6 +25,7 @@ enver generate [flags]
 | `--input` | `-i` | `.enver.yaml` | Input configuration file |
 | `--output-name` | | `.env` | Output file name |
 | `--output-directory` | | `generated` | Output directory for the .env file |
+| `--output-directory-clear` | | `true` | Clear the output directory before generating |
 | `--context` | `-c` | | Context for filtering sources (can be repeated) |
 | `--kube-context` | | | Kubernetes context to use |
 
@@ -451,8 +452,11 @@ executions:
 | `name` | | Identifier for the execution (displayed during execution) |
 | `output.name` | `.env` | File name for the generated .env file |
 | `output.directory` | `generated` | Directory for the generated .env file |
+| `output.clear` | `true` | Clear the output directory before generating |
 | `contexts` | | List of contexts to filter sources |
 | `kube-context` | | Kubernetes context to use (required if execution uses ConfigMap or Secret sources) |
+
+**Warning:** Each execution should use its own output directory. Since executions run concurrently and `output.clear` defaults to `true`, executions that share the same output directory may clear each other's files.
 
 ## Examples
 

@@ -130,18 +130,20 @@ func TestGenerateContainer(t *testing.T) {
 		t.Fatalf("Failed to change to testdata directory: %v", err)
 	}
 
-	// Clean up output directory
-	os.RemoveAll("output")
-	defer os.RemoveAll("output")
+	outputDir := "output/generate-container"
 
-	outputFile := filepath.Join("output", "container.env")
+	// Clean up output directory
+	os.RemoveAll(outputDir)
+	defer os.RemoveAll(outputDir)
+
+	outputFile := filepath.Join(outputDir, "container.env")
 
 	// Run generate command
 	cmd := exec.Command(binaryPath, "generate",
 		"--context", "container",
 		"--kube-context", "kind-kind",
 		"--output-name", "container.env",
-		"--output-directory", "output")
+		"--output-directory", outputDir)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -171,12 +173,13 @@ func TestGenerateContainer(t *testing.T) {
 	}
 
 	// Verify the extracted file exists
-	if _, err := os.Stat("output/container-files/config.json"); os.IsNotExist(err) {
-		t.Error("Expected output/container-files/config.json to be created by file extraction")
+	extractedFile := filepath.Join(outputDir, "container-files/config.json")
+	if _, err := os.Stat(extractedFile); os.IsNotExist(err) {
+		t.Errorf("Expected %s to be created by file extraction", extractedFile)
 	}
 
 	// Verify the extracted file contains expected content
-	fileContent, err := os.ReadFile("output/container-files/config.json")
+	fileContent, err := os.ReadFile(extractedFile)
 	if err != nil {
 		t.Fatalf("Failed to read extracted file: %v", err)
 	}
@@ -197,9 +200,11 @@ func TestExecuteContainer(t *testing.T) {
 		t.Fatalf("Failed to change to testdata directory: %v", err)
 	}
 
+	outputDir := "output/container-test"
+
 	// Clean up output directory
-	os.RemoveAll("output")
-	defer os.RemoveAll("output")
+	os.RemoveAll(outputDir)
+	defer os.RemoveAll(outputDir)
 
 	// Run execute command with container-test
 	cmd := exec.Command(binaryPath, "execute", "--name", "container-test")
@@ -212,7 +217,7 @@ func TestExecuteContainer(t *testing.T) {
 	}
 
 	// Verify container.env was created
-	actual, err := os.ReadFile("output/container.env")
+	actual, err := os.ReadFile(filepath.Join(outputDir, "container.env"))
 	if err != nil {
 		t.Fatalf("Failed to read output file: %v", err)
 	}
@@ -233,8 +238,9 @@ func TestExecuteContainer(t *testing.T) {
 	}
 
 	// Verify the extracted file exists
-	if _, err := os.Stat("output/container-files/config.json"); os.IsNotExist(err) {
-		t.Error("Expected output/container-files/config.json to be created by file extraction")
+	extractedFile := filepath.Join(outputDir, "container-files/config.json")
+	if _, err := os.Stat(extractedFile); os.IsNotExist(err) {
+		t.Errorf("Expected %s to be created by file extraction", extractedFile)
 	}
 }
 
@@ -250,9 +256,11 @@ func TestVariableIncludeFilter(t *testing.T) {
 		t.Fatalf("Failed to change to testdata directory: %v", err)
 	}
 
+	outputDir := "output/variable-filter-test"
+
 	// Clean up output directory
-	os.RemoveAll("output")
-	defer os.RemoveAll("output")
+	os.RemoveAll(outputDir)
+	defer os.RemoveAll(outputDir)
 
 	// Run execute command with variable-filter-test
 	cmd := exec.Command(binaryPath, "execute", "--name", "variable-filter-test")
@@ -265,7 +273,7 @@ func TestVariableIncludeFilter(t *testing.T) {
 	}
 
 	// Verify variable-filter.env was created
-	actual, err := os.ReadFile("output/variable-filter.env")
+	actual, err := os.ReadFile(filepath.Join(outputDir, "variable-filter.env"))
 	if err != nil {
 		t.Fatalf("Failed to read output file: %v", err)
 	}
@@ -295,6 +303,177 @@ func TestVariableIncludeFilter(t *testing.T) {
 	if strings.Contains(actualStr, "SECRET_KEY2") {
 		t.Errorf("Expected SECRET_KEY2 to be excluded, got:\n%s", actualStr)
 	}
+}
+
+func TestOutputDirectoryClearTrue(t *testing.T) {
+	// Change to testdata directory
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	defer os.Chdir(origDir)
+
+	if err := os.Chdir("testdata"); err != nil {
+		t.Fatalf("Failed to change to testdata directory: %v", err)
+	}
+
+	outputDir := "output/clear-true-test"
+
+	// Clean up output directory
+	os.RemoveAll(outputDir)
+	defer os.RemoveAll(outputDir)
+
+	// Create a pre-existing file in the output directory
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		t.Fatalf("Failed to create output directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(outputDir, "pre-existing.txt"), []byte("should be removed"), 0644); err != nil {
+		t.Fatalf("Failed to create pre-existing file: %v", err)
+	}
+
+	// Run execute with clear=true
+	cmd := exec.Command(binaryPath, "execute", "--name", "clear-true-test")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Execute command failed: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+
+	// Verify the .env file was created
+	if _, err := os.Stat(filepath.Join(outputDir, "clear-true.env")); os.IsNotExist(err) {
+		t.Error("Expected clear-true.env to be created")
+	}
+
+	// Verify the pre-existing file was removed (clear=true)
+	if _, err := os.Stat(filepath.Join(outputDir, "pre-existing.txt")); !os.IsNotExist(err) {
+		t.Error("Expected pre-existing.txt to be removed when clear=true")
+	}
+}
+
+func TestOutputDirectoryClearFalse(t *testing.T) {
+	// Change to testdata directory
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	defer os.Chdir(origDir)
+
+	if err := os.Chdir("testdata"); err != nil {
+		t.Fatalf("Failed to change to testdata directory: %v", err)
+	}
+
+	outputDir := "output/clear-false-test"
+
+	// Clean up output directory
+	os.RemoveAll(outputDir)
+	defer os.RemoveAll(outputDir)
+
+	// Create a pre-existing file in the output directory
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		t.Fatalf("Failed to create output directory: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(outputDir, "pre-existing.txt"), []byte("should remain"), 0644); err != nil {
+		t.Fatalf("Failed to create pre-existing file: %v", err)
+	}
+
+	// Run execute with clear=false
+	cmd := exec.Command(binaryPath, "execute", "--name", "clear-false-test")
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("Execute command failed: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+	}
+
+	// Verify the .env file was created
+	if _, err := os.Stat(filepath.Join(outputDir, "clear-false.env")); os.IsNotExist(err) {
+		t.Error("Expected clear-false.env to be created")
+	}
+
+	// Verify the pre-existing file was NOT removed (clear=false)
+	if _, err := os.Stat(filepath.Join(outputDir, "pre-existing.txt")); os.IsNotExist(err) {
+		t.Error("Expected pre-existing.txt to remain when clear=false")
+	}
+}
+
+func TestGenerateOutputDirectoryClear(t *testing.T) {
+	// Change to testdata directory
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	defer os.Chdir(origDir)
+
+	if err := os.Chdir("testdata"); err != nil {
+		t.Fatalf("Failed to change to testdata directory: %v", err)
+	}
+
+	// Test with --output-directory-clear=true (default)
+	t.Run("clear-true", func(t *testing.T) {
+		outputDir := "output/generate-clear-true"
+		os.RemoveAll(outputDir)
+		defer os.RemoveAll(outputDir)
+
+		// Create pre-existing file
+		os.MkdirAll(outputDir, 0755)
+		os.WriteFile(filepath.Join(outputDir, "pre-existing.txt"), []byte("should be removed"), 0644)
+
+		cmd := exec.Command(binaryPath, "generate",
+			"--context", "configmap-only",
+			"--kube-context", "kind-kind",
+			"--output-name", "test.env",
+			"--output-directory", outputDir,
+			"--output-directory-clear=true")
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Generate command failed: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+		}
+
+		if _, err := os.Stat(filepath.Join(outputDir, "test.env")); os.IsNotExist(err) {
+			t.Error("Expected test.env to be created")
+		}
+		if _, err := os.Stat(filepath.Join(outputDir, "pre-existing.txt")); !os.IsNotExist(err) {
+			t.Error("Expected pre-existing.txt to be removed when --output-directory-clear=true")
+		}
+	})
+
+	// Test with --output-directory-clear=false
+	t.Run("clear-false", func(t *testing.T) {
+		outputDir := "output/generate-clear-false"
+		os.RemoveAll(outputDir)
+		defer os.RemoveAll(outputDir)
+
+		// Create pre-existing file
+		os.MkdirAll(outputDir, 0755)
+		os.WriteFile(filepath.Join(outputDir, "pre-existing.txt"), []byte("should remain"), 0644)
+
+		cmd := exec.Command(binaryPath, "generate",
+			"--context", "configmap-only",
+			"--kube-context", "kind-kind",
+			"--output-name", "test.env",
+			"--output-directory", outputDir,
+			"--output-directory-clear=false")
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("Generate command failed: %v\nstdout: %s\nstderr: %s", err, stdout.String(), stderr.String())
+		}
+
+		if _, err := os.Stat(filepath.Join(outputDir, "test.env")); os.IsNotExist(err) {
+			t.Error("Expected test.env to be created")
+		}
+		if _, err := os.Stat(filepath.Join(outputDir, "pre-existing.txt")); os.IsNotExist(err) {
+			t.Error("Expected pre-existing.txt to remain when --output-directory-clear=false")
+		}
+	})
 }
 
 func TestExecuteCommand(t *testing.T) {
@@ -329,11 +508,11 @@ func TestExecuteCommand(t *testing.T) {
 		outputFile string
 		goldenFile string
 	}{
-		{"configmap", "output/configmap.env", "golden/configmap.env"},
-		{"secret", "output/secret.env", "golden/secret.env"},
-		{"deployment", "output/deployment.env", "golden/deployment.env"},
-		{"statefulset", "output/statefulset.env", "golden/statefulset.env"},
-		{"daemonset", "output/daemonset.env", "golden/daemonset.env"},
+		{"configmap", "output/configmap-test/configmap.env", "golden/execute/configmap.env"},
+		{"secret", "output/secret-test/secret.env", "golden/execute/secret.env"},
+		{"deployment", "output/deployment-test/deployment.env", "golden/execute/deployment.env"},
+		{"statefulset", "output/statefulset-test/statefulset.env", "golden/execute/statefulset.env"},
+		{"daemonset", "output/daemonset-test/daemonset.env", "golden/execute/daemonset.env"},
 	}
 
 	for _, tc := range tests {
@@ -344,6 +523,7 @@ func TestExecuteCommand(t *testing.T) {
 			}
 
 			if *update {
+				os.MkdirAll(filepath.Dir(tc.goldenFile), 0755)
 				if err := os.WriteFile(tc.goldenFile, actual, 0644); err != nil {
 					t.Fatalf("Failed to update golden file: %v", err)
 				}
@@ -389,13 +569,13 @@ func TestExecuteByName(t *testing.T) {
 	}
 
 	// Verify output exists
-	if _, err := os.Stat("output/configmap.env"); os.IsNotExist(err) {
-		t.Error("Expected output/configmap.env to be created")
+	if _, err := os.Stat("output/configmap-test/configmap.env"); os.IsNotExist(err) {
+		t.Error("Expected output/configmap-test/configmap.env to be created")
 	}
 
 	// Verify other outputs don't exist (only configmap-test was run)
-	if _, err := os.Stat("output/secret.env"); !os.IsNotExist(err) {
-		t.Error("Expected output/secret.env to not exist")
+	if _, err := os.Stat("output/secret-test/secret.env"); !os.IsNotExist(err) {
+		t.Error("Expected output/secret-test/secret.env to not exist")
 	}
 }
 
@@ -455,8 +635,8 @@ func TestExecuteInteractiveSelection(t *testing.T) {
 	}
 
 	// Verify that at least one output was created
-	if _, err := os.Stat("output/configmap.env"); os.IsNotExist(err) {
-		t.Error("Expected output/configmap.env to be created")
+	if _, err := os.Stat("output/configmap-test/configmap.env"); os.IsNotExist(err) {
+		t.Error("Expected output/configmap-test/configmap.env to be created")
 	}
 }
 
@@ -472,9 +652,11 @@ func TestGenerateInteractiveKubeContextSelection(t *testing.T) {
 		t.Fatalf("Failed to change to testdata directory: %v", err)
 	}
 
+	outputDir := "output/generate-interactive-kube"
+
 	// Clean up output directory
-	os.RemoveAll("output")
-	defer os.RemoveAll("output")
+	os.RemoveAll(outputDir)
+	defer os.RemoveAll(outputDir)
 
 	// Create a console for interactive testing
 	console, err := expect.NewConsole(expect.WithStdout(os.Stdout), expect.WithDefaultTimeout(30*time.Second))
@@ -487,7 +669,7 @@ func TestGenerateInteractiveKubeContextSelection(t *testing.T) {
 	cmd := exec.Command(binaryPath, "generate",
 		"--context", "configmap-only",
 		"--output-name", "interactive-test.env",
-		"--output-directory", "output")
+		"--output-directory", outputDir)
 	cmd.Stdin = console.Tty()
 	cmd.Stdout = console.Tty()
 	cmd.Stderr = console.Tty()
@@ -537,16 +719,18 @@ func TestGenerateWithTransformations(t *testing.T) {
 		t.Fatalf("Failed to change to testdata directory: %v", err)
 	}
 
+	outputDir := "output/generate-transformations"
+
 	// Clean up output directory
-	os.RemoveAll("output")
-	defer os.RemoveAll("output")
+	os.RemoveAll(outputDir)
+	defer os.RemoveAll(outputDir)
 
 	// Run generate with deployment context (has volume mounts with file transformation)
 	cmd := exec.Command(binaryPath, "generate",
 		"--context", "deployment",
 		"--kube-context", "kind-kind",
 		"--output-name", "transform-test.env",
-		"--output-directory", "output")
+		"--output-directory", outputDir)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -556,12 +740,12 @@ func TestGenerateWithTransformations(t *testing.T) {
 	}
 
 	// Verify file transformation created the files
-	if _, err := os.Stat("output/config-volume/config.json"); os.IsNotExist(err) {
-		t.Error("Expected output/config-volume/config.json to be created by file transformation")
+	if _, err := os.Stat(filepath.Join(outputDir, "config-volume/config.json")); os.IsNotExist(err) {
+		t.Error("Expected config-volume/config.json to be created by file transformation")
 	}
 
-	if _, err := os.Stat("output/config-volume/settings.yaml"); os.IsNotExist(err) {
-		t.Error("Expected output/config-volume/settings.yaml to be created by file transformation")
+	if _, err := os.Stat(filepath.Join(outputDir, "config-volume/settings.yaml")); os.IsNotExist(err) {
+		t.Error("Expected config-volume/settings.yaml to be created by file transformation")
 	}
 }
 
@@ -579,18 +763,20 @@ func runGenerateTest(t *testing.T, context, goldenFile string) {
 		t.Fatalf("Failed to change to testdata directory: %v", err)
 	}
 
-	// Clean up output directory
-	os.RemoveAll("output")
-	defer os.RemoveAll("output")
+	outputDir := filepath.Join("output", "generate-"+context)
 
-	outputFile := filepath.Join("output", goldenFile)
+	// Clean up output directory
+	os.RemoveAll(outputDir)
+	defer os.RemoveAll(outputDir)
+
+	outputFile := filepath.Join(outputDir, goldenFile)
 
 	// Run generate command
 	cmd := exec.Command(binaryPath, "generate",
 		"--context", context,
 		"--kube-context", "kind-kind",
 		"--output-name", goldenFile,
-		"--output-directory", "output")
+		"--output-directory", outputDir)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -605,10 +791,11 @@ func runGenerateTest(t *testing.T, context, goldenFile string) {
 		t.Fatalf("Failed to read output file: %v", err)
 	}
 
-	goldenPath := filepath.Join("golden", goldenFile)
+	goldenPath := filepath.Join("golden", "generate", goldenFile)
 
 	// Update golden file if requested
 	if *update {
+		os.MkdirAll(filepath.Dir(goldenPath), 0755)
 		if err := os.WriteFile(goldenPath, actual, 0644); err != nil {
 			t.Fatalf("Failed to update golden file: %v", err)
 		}

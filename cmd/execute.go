@@ -21,6 +21,7 @@ import (
 type ExecutionOutput struct {
 	Name      string `yaml:"name"`
 	Directory string `yaml:"directory"`
+	Clear     *bool  `yaml:"clear"`
 }
 
 type Execution struct {
@@ -265,6 +266,14 @@ func runExecution(execution Execution, configSources []sources.Source, loadingRu
 	outputDirectory := execution.Output.Directory
 	if outputDirectory == "" {
 		outputDirectory = "generated"
+	}
+
+	// Clean output directory if requested (default: true)
+	shouldClear := execution.Output.Clear == nil || *execution.Output.Clear
+	if shouldClear {
+		if err := os.RemoveAll(outputDirectory); err != nil {
+			return fmt.Errorf("failed to clear output directory: %w", err)
+		}
 	}
 
 	// Collect all env vars with their source info
